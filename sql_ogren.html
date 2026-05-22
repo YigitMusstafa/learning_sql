@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Öğren 🎓</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.header { background: #1e293b; padding: 10px 20px; display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #3b82f6; flex-shrink: 0; flex-wrap: wrap; }
+.header h1 { font-size: 17px; font-weight: 700; color: #60a5fa; white-space: nowrap; }
+.header .sub { color: #64748b; font-size: 11px; }
+.db-switcher { display: flex; gap: 4px; background: #0f172a; padding: 3px; border-radius: 9px; }
+.db-btn { background: transparent; color: #64748b; border: none; padding: 6px 12px; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s; }
+.db-btn.active { background: #2563eb; color: white; }
+.db-btn:hover:not(.active) { background: #334155; color: #e2e8f0; }
+.btn { border: none; padding: 7px 14px; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 600; transition: opacity 0.15s; }
+.btn:hover { opacity: 0.85; }
+.btn-reset { background: #dc2626; color: white; margin-left: auto; }
+.btn-run { background: #22c55e; color: white; }
+.main { display: flex; flex: 1; overflow: hidden; }
+.sidebar { width: 230px; background: #1e293b; border-right: 1px solid #334155; overflow-y: auto; flex-shrink: 0; }
+.sidebar-hdr { padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #475569; font-weight: 700; border-bottom: 1px solid #334155; }
+.lesson-item { padding: 10px 14px; cursor: pointer; display: flex; align-items: flex-start; gap: 8px; border-left: 3px solid transparent; transition: all 0.15s; }
+.lesson-item:hover { background: #334155; }
+.lesson-item.active { background: #1e3a5f; border-left-color: #3b82f6; }
+.lesson-item .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.lesson-item .info .title { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+.lesson-item .info .sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+.lesson-item.active .info .sub { color: #93c5fd; }
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.lesson-panel { flex: 0 0 auto; max-height: 48%; overflow-y: auto; padding: 16px 20px; border-bottom: 1px solid #334155; }
+.lesson-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.lesson-desc { font-size: 13px; line-height: 1.75; color: #94a3b8; margin-bottom: 14px; }
+.lesson-desc strong { color: #60a5fa; font-weight: 600; }
+.lesson-desc code { background: #334155; padding: 1px 6px; border-radius: 4px; font-family: 'Courier New', monospace; color: #fbbf24; font-size: 12px; }
+.ex-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #475569; margin-bottom: 8px; }
+.ex-grid { display: flex; flex-direction: column; gap: 6px; }
+.ex-item { background: #1e293b; border: 1px solid #334155; border-radius: 7px; padding: 8px 12px; cursor: pointer; transition: all 0.15s; }
+.ex-item:hover { border-color: #3b82f6; background: #1e3a5f; }
+.ex-item .ex-desc { font-size: 11px; color: #64748b; margin-bottom: 3px; }
+.ex-item .ex-code { font-family: 'Courier New', monospace; font-size: 12px; color: #86efac; white-space: pre-wrap; word-break: break-all; }
+.editor-bar { padding: 8px 16px; background: #1e293b; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #334155; flex-shrink: 0; }
+.editor-bar span { font-size: 12px; color: #64748b; }
+.editor-bar .hint { margin-left: auto; font-size: 11px; color: #475569; }
+.sql-editor { width: 100%; padding: 12px 16px; background: #020617; color: #fbbf24; font-family: 'Courier New', monospace; font-size: 13px; border: none; outline: none; resize: none; flex: 0 0 110px; border-bottom: 1px solid #334155; }
+.results-wrap { flex: 1; overflow: auto; }
+.results-info { padding: 10px 16px; color: #64748b; font-size: 13px; font-style: italic; }
+.results-count { padding: 6px 16px; font-size: 11px; color: #22c55e; background: #052e16; border-bottom: 1px solid #166534; }
+.err-box { margin: 10px 16px; padding: 10px 14px; background: #1c0a0a; border: 1px solid #7f1d1d; border-radius: 7px; color: #f87171; font-family: monospace; font-size: 12px; }
+.ok-box { padding: 10px 16px; color: #86efac; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { background: #1e293b; color: #60a5fa; padding: 8px 12px; text-align: left; border-bottom: 2px solid #334155; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 1; }
+td { padding: 7px 12px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+tr:hover td { background: #1e293b; }
+.schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; margin-top: 10px; }
+.s-tbl { background: #0f172a; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
+.s-hdr { background: #1d4ed8; padding: 7px 10px; font-weight: 700; font-size: 12px; }
+.s-col { padding: 5px 10px; font-size: 11px; display: flex; justify-content: space-between; border-top: 1px solid #1e293b; }
+.s-col .cn { color: #e2e8f0; }
+.s-col .ct { color: #64748b; font-family: monospace; }
+.pk { color: #fbbf24; font-size: 9px; margin-left: 3px; }
+.fk { color: #a78bfa; font-size: 9px; margin-left: 3px; }
+.loading { position: fixed; inset: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+.spinner { width: 44px; height: 44px; border: 4px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading p { color: #64748b; font-size: 14px; }
+/* ====== SINAV MODU ====== */
+.btn-quiz { background: #7c3aed; color: white; }
+.btn-quiz.active { background: #f59e0b; color: #0f172a; }
+.quiz-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.quiz-topbar { background: #1e293b; border-bottom: 1px solid #334155; padding: 8px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+.quiz-score-txt { font-size: 13px; font-weight: 700; color: #22c55e; white-space: nowrap; }
+.diff-filter { display: flex; gap: 3px; }
+.diff-btn { background: #334155; color: #94a3b8; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.15s; }
+.diff-btn.active { color: white; }
+.diff-btn.d0.active { background: #475569; }
+.diff-btn.d1.active { background: #16a34a; }
+.diff-btn.d2.active { background: #d97706; }
+.diff-btn.d3.active { background: #dc2626; }
+.quiz-nav { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.quiz-counter { font-size: 12px; color: #64748b; }
+.quiz-body { flex: 1; overflow-y: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+.q-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px 18px; }
+.q-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.diff-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.diff-badge.d1 { background: #052e16; color: #86efac; border: 1px solid #166534; }
+.diff-badge.d2 { background: #451a03; color: #fcd34d; border: 1px solid #92400e; }
+.diff-badge.d3 { background: #1c0a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+.q-num { font-size: 11px; color: #475569; }
+.q-text { font-size: 14px; font-weight: 600; color: #e2e8f0; line-height: 1.7; }
+.help-section { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; }
+.help-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #475569; font-weight: 700; margin-bottom: 8px; }
+.help-tabs { display: flex; gap: 3px; margin-bottom: 10px; flex-wrap: wrap; }
+.help-tab { background: #1e293b; color: #64748b; border: 1px solid #334155; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.15s; white-space: nowrap; }
+.help-tab.active { background: #2563eb; color: white; border-color: #2563eb; }
+.help-display { font-family: 'Courier New', monospace; font-size: 12px; line-height: 2; color: #94a3b8; white-space: pre-wrap; min-height: 28px; }
+.blank { background: #854d0e; color: #fef08a; border-radius: 3px; padding: 0 6px; font-weight: 700; font-family: 'Courier New', monospace; }
+.help-none { color: #334155; font-family: inherit; font-style: italic; font-size: 13px; }
+.quiz-editor-area { display: flex; flex-direction: column; gap: 8px; }
+.quiz-editor { width: 100%; padding: 10px 14px; background: #020617; color: #fbbf24; font-family: 'Courier New', monospace; font-size: 13px; border: 1px solid #334155; border-radius: 8px; outline: none; resize: vertical; min-height: 80px; }
+.quiz-editor:focus { border-color: #3b82f6; }
+.quiz-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn-check { background: #22c55e; color: #0f172a; font-weight: 700; }
+.btn-show-ans { background: #7c3aed; color: white; }
+.qresult { padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+.qresult.ok { background: #052e16; border: 1px solid #166534; color: #86efac; font-weight: 700; }
+.qresult.fail { background: #1c0a0a; border: 1px solid #7f1d1d; color: #fca5a5; font-weight: 700; }
+.qresult .ans-reveal { background: #0c1445; border: 1px solid #1e3a5f; color: #93c5fd; font-family: 'Courier New', monospace; white-space: pre-wrap; margin-top: 8px; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 400; }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p>Her iki veritabanı yükleniyor... ⏳</p>
+</div>
+
+<div class="header">
+  <div>
+    <h1>🎓 SQL Öğren</h1>
+    <div class="sub" id="db-sub">📚 vt_ders veritabanı — Arif Hoca</div>
+  </div>
+  <div class="db-switcher">
+    <button class="db-btn active" onclick="switchDB('vtders')" id="btn-vtders">📚 vt_ders</button>
+    <button class="db-btn" onclick="switchDB('alisveris')" id="btn-alisveris">🛒 alisveris</button>
+  </div>
+  <button class="btn btn-reset" onclick="resetDB()">🔄 Sıfırla</button>
+  <button class="btn btn-quiz" onclick="toggleQuiz()" id="btn-quiz">🎯 Sınav Modu</button>
+</div>
+
+<div class="main" id="lesson-main">
+  <div class="sidebar">
+    <div class="sidebar-hdr" id="sidebar-hdr">📚 vt_ders Dersleri</div>
+    <div id="lesson-list"></div>
+  </div>
+  <div class="content">
+    <div class="lesson-panel" id="lesson-panel"></div>
+    <div class="editor-bar">
+      <span>📝 <strong style="color:#e2e8f0">SQL Editör</strong></span>
+      <button class="btn btn-run" onclick="runQuery()">▶ Çalıştır</button>
+      <span class="hint">Ctrl+Enter ile de çalışır</span>
+    </div>
+    <textarea class="sql-editor" id="sql-editor" placeholder="Buraya SQL yaz..." spellcheck="false"></textarea>
+    <div class="results-wrap" id="results-wrap">
+      <div class="results-info">👆 Sol menüden ders seç, örneğe tıkla, ▶ Çalıştır'a bas!</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SINAV MODU PANELİ ===== -->
+<div class="quiz-wrap" id="quiz-main" style="display:none">
+  <div class="quiz-topbar">
+    <span class="quiz-score-txt" id="quiz-score-txt">🏆 0 / 0 doğru</span>
+    <div class="diff-filter">
+      <button class="diff-btn d0 active" onclick="setDiffFilter(0)" id="dfbtn-0">Hepsi</button>
+      <button class="diff-btn d1" onclick="setDiffFilter(1)" id="dfbtn-1">🟢 Kolay</button>
+      <button class="diff-btn d2" onclick="setDiffFilter(2)" id="dfbtn-2">🟡 Orta</button>
+      <button class="diff-btn d3" onclick="setDiffFilter(3)" id="dfbtn-3">🔴 Zor</button>
+    </div>
+    <div class="quiz-nav">
+      <span class="quiz-counter" id="quiz-counter">0 / 0</span>
+      <button class="btn btn-skip" onclick="quizNav(-1)" style="padding:5px 10px">◀</button>
+      <button class="btn btn-skip" onclick="quizNav(1)" style="padding:5px 10px">▶</button>
+    </div>
+  </div>
+  <div class="quiz-body">
+    <div class="q-card" id="q-card">
+      <div class="q-text" style="color:#64748b">Yükleniyor...</div>
+    </div>
+    <div class="help-section">
+      <div class="help-lbl">💡 Yardım Seviyesi — ne kadar yardım istiyorsun?</div>
+      <div class="help-tabs">
+        <button class="help-tab" onclick="setHelp(1)" id="ht-1">1 · Boşluk Doldur</button>
+        <button class="help-tab" onclick="setHelp(2)" id="ht-2">2 · Anahtar Kelimeler</button>
+        <button class="help-tab" onclick="setHelp(3)" id="ht-3">3 · İpucu</button>
+        <button class="help-tab active" onclick="setHelp(4)" id="ht-4">4 · Bağımsız 💪</button>
+      </div>
+      <div class="help-display" id="help-display">
+        <span class="help-none">Yardım yok — gücünü kendin göster! 💪</span>
+      </div>
+    </div>
+    <div class="quiz-editor-area">
+      <textarea class="quiz-editor" id="quiz-editor" placeholder="SQL sorgunu buraya yaz..." spellcheck="false"></textarea>
+      <div class="quiz-actions">
+        <button class="btn btn-check" onclick="checkAnswer()">✅ Kontrol Et</button>
+        <button class="btn btn-skip" onclick="quizSkip()">↷ Geç</button>
+        <button class="btn btn-show-ans" onclick="showAnswer()" id="btn-show-ans" style="display:none">👁 Cevabı Gör</button>
+        <span style="font-size:11px;color:#334155;margin-left:6px">Ctrl+Enter ile kontrol</span>
+      </div>
+    </div>
+    <div id="quiz-result"></div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// LESSON DATA
+// =============================================
+const ALL_LESSONS = {
+
+vtders: [
+  {
+    icon:'🗄️', title:'Veritabanı Yapısı', sub:'Tablolara Genel Bakış',
+    html:`<div class="lesson-title">🗄️ Bu Veritabanı Ne?</div>
+<div class="lesson-desc">
+Bir <strong>veritabanı</strong>, verilerin düzenli saklandığı sistemdir — Excel gibi ama çok daha güçlü!<br><br>
+<strong>vt_ders</strong> veritabanı bir üniversitenin öğrenci sistemini temsil ediyor. İçinde <strong>5 tablo</strong> var:<br><br>
+🏛️ <strong>fakulteler</strong> → Fakülte adları (Mühendislik, Tıp vs.)<br>
+📂 <strong>bolumler</strong> → Bölüm adları ve hangi fakültede oldukları<br>
+👨‍🎓 <strong>ogrenciler</strong> → Öğrenci bilgileri (ad, soyad, doğum tarihi, bölüm)<br>
+📖 <strong>dersler</strong> → Ders adları ve kredi bilgileri<br>
+📊 <strong>notlar</strong> → Kim, hangi dersten, kaç aldı (vize/final/büt)<br><br>
+Tablolar <strong>birbiriyle bağlantılı!</strong> Örneğin öğrencinin <code>bolumkod</code> sütunu, bölüm tablosundaki <code>bolumno</code> ile eşleşir. Buna <strong>yabancı anahtar (foreign key)</strong> denir.
+</div>
+<div id="schema-here"></div>`,
+    examples:[
+      {desc:'Tüm öğrencileri gör',code:'SELECT * FROM ogrenciler'},
+      {desc:'Tüm notları gör',code:'SELECT * FROM notlar'},
+      {desc:'Tüm dersleri gör',code:'SELECT * FROM dersler'},
+      {desc:'Tüm bölümleri gör',code:'SELECT * FROM bolumler'},
+      {desc:'Tüm fakülteleri gör',code:'SELECT * FROM fakulteler'},
+    ]
+  },
+  {
+    icon:'🏗️', title:'DDL — Tablo İşlemleri', sub:'CREATE, DROP, ALTER',
+    html:`<div class="lesson-title">🏗️ DDL Nedir?</div>
+<div class="lesson-desc">
+<strong>DDL (Data Definition Language)</strong> tablo <em>oluşturmak</em>, <em>silmek</em> veya <em>değiştirmek</em> için kullanılır.<br><br>
+▸ <code>CREATE TABLE isim (...)</code> → Yeni tablo oluştur<br>
+▸ <code>DROP TABLE isim</code> → Tabloyu tamamen sil<br>
+▸ <code>ALTER TABLE isim ADD COLUMN sütun TİP</code> → Sütun ekle<br>
+▸ <code>ALTER TABLE isim DROP COLUMN sütun</code> → Sütun sil<br><br>
+<strong>Veri tipleri:</strong> <code>INTEGER</code> (tam sayı) · <code>TEXT</code> (metin) · <code>DATE</code> (tarih)<br><br>
+⚠️ <strong>DROP TABLE geri alınamaz!</strong> Tüm veriler kalıcı olarak silinir.
+</div>`,
+    examples:[
+      {desc:'Yeni tablo oluştur',code:'CREATE TABLE Personel (\n  tcno INTEGER,\n  ad TEXT,\n  soyad TEXT,\n  maas INTEGER\n)'},
+      {desc:'Oluşturduğun tabloyu gör',code:'SELECT * FROM Personel'},
+      {desc:'Tabloya sütun ekle',code:'ALTER TABLE Personel ADD COLUMN isegiris TEXT'},
+      {desc:'ogrenciler tablosuna adres ekle',code:'ALTER TABLE ogrenciler ADD COLUMN adres TEXT'},
+      {desc:'Personel tablosunu sil',code:'DROP TABLE Personel'},
+    ]
+  },
+  {
+    icon:'✏️', title:'DML — Veri İşlemleri', sub:'INSERT, UPDATE, DELETE',
+    html:`<div class="lesson-title">✏️ DML Nedir?</div>
+<div class="lesson-desc">
+<strong>DML (Data Manipulation Language)</strong> tablodaki verileri ekleme, güncelleme, silme işlemleri.<br><br>
+▸ <code>INSERT INTO tablo VALUES (...)</code> → Yeni satır ekle<br>
+▸ <code>UPDATE tablo SET kolon=değer WHERE koşul</code> → Veri güncelle<br>
+▸ <code>DELETE FROM tablo WHERE koşul</code> → Veri sil<br><br>
+⚠️ <strong>SÜPER DİKKAT — WHERE'i unutma!</strong><br>
+<code>UPDATE ogrenciler SET ograd='Murat'</code> → 35 öğrencinin hepsinin adı Murat olur! 😱<br>
+Doğrusu: <code>UPDATE ogrenciler SET ograd='Murat' WHERE ogrno=106</code>
+</div>`,
+    examples:[
+      {desc:'Yeni öğrenci ekle',code:"INSERT INTO ogrenciler VALUES (106, 'Huseyin', 'Yıldırım', 'Erkek', '1989-01-12', 50)"},
+      {desc:'Eklediğimizi kontrol et',code:'SELECT * FROM ogrenciler WHERE ogrno = 106'},
+      {desc:'Adını güncelle (WHERE ile!)',code:"UPDATE ogrenciler SET ograd = 'Murat' WHERE ogrno = 106"},
+      {desc:'Vizeye 5 puan ekle (vize < 30 olanlar)',code:'UPDATE notlar SET vize = vize + 5 WHERE vize < 30'},
+      {desc:'Eklenen öğrenciyi sil',code:'DELETE FROM ogrenciler WHERE ogrno = 106'},
+    ]
+  },
+  {
+    icon:'🔍', title:'SELECT — Temel Sorgular', sub:'Verileri görüntüle',
+    html:`<div class="lesson-title">🔍 SELECT — En Temel Komut</div>
+<div class="lesson-desc">
+<strong>SELECT</strong> veritabanından veri çekmek için kullanılır.<br><br>
+Temel yapı: <code>SELECT [sütunlar] FROM [tablo]</code><br><br>
+▸ <code>SELECT *</code> → Tüm sütunları getir (* = "hepsi" demek)<br>
+▸ <code>SELECT ograd, ogrsoyad</code> → Sadece bu iki sütunu getir<br>
+▸ <code>AS</code> → Sütuna takma ad ver<br><br>
+Örnek: <code>SELECT ogrno AS Numara, ograd AS Ad FROM ogrenciler</code>
+</div>`,
+    examples:[
+      {desc:'Tüm öğrencileri listele',code:'SELECT * FROM ogrenciler'},
+      {desc:'Sadece ad ve soyadı getir',code:'SELECT ograd, ogrsoyad FROM ogrenciler'},
+      {desc:'Sütunlara takma ad ver (AS)',code:'SELECT ogrno AS Ogrenci_no, ograd AS Ogrenci_ad FROM ogrenciler'},
+      {desc:'Not ortalaması hesapla',code:'SELECT ogrno, derskodu, (final*0.6 + vize*0.4) AS ortalama FROM notlar'},
+      {desc:'Ortalamaları büyükten küçüğe sırala',code:'SELECT ogrno, derskodu, (final*0.6 + vize*0.4) AS ortalama FROM notlar ORDER BY ortalama DESC'},
+    ]
+  },
+  {
+    icon:'🎯', title:'WHERE — Filtreleme', sub:'Koşullu sorgular',
+    html:`<div class="lesson-title">🎯 WHERE ile Filtreleme</div>
+<div class="lesson-desc">
+<strong>WHERE</strong> ile sorguya koşul ekleriz — "şu koşulu sağlayanları getir" demiş oluruz.<br><br>
+<strong>Karşılaştırma:</strong> <code>=</code> &nbsp; <code>!=</code> &nbsp; <code>&gt;</code> &nbsp; <code>&lt;</code> &nbsp; <code>&gt;=</code> &nbsp; <code>&lt;=</code><br><br>
+<strong>Mantıksal:</strong><br>
+• <code>AND</code> → ikisi de doğru olmalı<br>
+• <code>OR</code> → birisi doğru olsa yeter<br>
+• <code>NOT</code> → değil<br><br>
+Örnek: <code>SELECT * FROM ogrenciler WHERE cinsiyet='Erkek' AND bolumkod=60</code>
+</div>`,
+    examples:[
+      {desc:'60 nolu bölümdeki öğrenciler',code:'SELECT * FROM ogrenciler WHERE bolumkod=60'},
+      {desc:'Aykut Saka\'yı bul',code:"SELECT * FROM ogrenciler WHERE ograd='aykut' AND ogrsoyad='saka'"},
+      {desc:'Erkek öğrenciler',code:"SELECT * FROM ogrenciler WHERE cinsiyet='Erkek'"},
+      {desc:'1975 sonrası doğanlar',code:"SELECT * FROM ogrenciler WHERE dogumtarihi > '1975-01-01'"},
+      {desc:'Mahmut veya soyadı Kaya olanlar',code:"SELECT * FROM ogrenciler WHERE ograd='Mahmut' OR ogrsoyad='Kaya'"},
+      {desc:'Erkek VE 50 nolu bölüm',code:"SELECT * FROM ogrenciler WHERE cinsiyet='Erkek' AND bolumkod=50"},
+    ]
+  },
+  {
+    icon:'📋', title:'IN, BETWEEN, ORDER BY', sub:'Gelişmiş filtreleme ve sıralama',
+    html:`<div class="lesson-title">📋 Gelişmiş Filtreleme ve Sıralama</div>
+<div class="lesson-desc">
+<strong>IN</strong> → OR'un kısaltması:<br>
+<code>WHERE bolumkod IN (10, 40, 50)</code> = <code>WHERE bolumkod=10 OR bolumkod=40 OR bolumkod=50</code><br><br>
+<strong>BETWEEN</strong> → Aralık (başlangıç ve bitiş dahil):<br>
+<code>WHERE bolumkod BETWEEN 10 AND 60</code><br><br>
+<strong>ORDER BY</strong> → Sırala:<br>
+• <code>ORDER BY ograd</code> → A→Z (ASC = varsayılan)<br>
+• <code>ORDER BY ograd DESC</code> → Z→A<br><br>
+<strong>DISTINCT</strong> → Tekrar edenleri bir kez göster:<br>
+<code>SELECT DISTINCT ograd FROM ogrenciler</code>
+</div>`,
+    examples:[
+      {desc:'IN ile 3 bölüm',code:'SELECT * FROM ogrenciler WHERE bolumkod IN (10, 40, 50)'},
+      {desc:'BETWEEN ile 10-60 arası',code:'SELECT * FROM ogrenciler WHERE bolumkod BETWEEN 10 AND 60'},
+      {desc:'NOT BETWEEN (10-60 dışı)',code:'SELECT * FROM ogrenciler WHERE bolumkod NOT BETWEEN 10 AND 60'},
+      {desc:'Ada göre sırala',code:'SELECT * FROM ogrenciler ORDER BY ograd'},
+      {desc:'Ada, soyadına ters sırala',code:'SELECT * FROM ogrenciler ORDER BY ograd, ogrsoyad DESC'},
+      {desc:'DISTINCT — tekrarsız isimler',code:'SELECT DISTINCT ograd FROM ogrenciler ORDER BY ograd'},
+    ]
+  },
+  {
+    icon:'🔤', title:'LIKE — Metin Arama', sub:'% ve _ joker karakterler',
+    html:`<div class="lesson-title">🔤 LIKE ile Metin Arama</div>
+<div class="lesson-desc">
+<strong>LIKE</strong> metin içinde arama yapar. İki joker karakter:<br><br>
+• <code>%</code> → Sıfır veya daha fazla herhangi bir karakter<br>
+• <code>_</code> → Tam olarak 1 karakter<br><br>
+<code>LIKE 'a%'</code> → a ile başlayanlar &nbsp;|&nbsp; <code>LIKE '%a'</code> → a ile bitenler<br>
+<code>LIKE '%ar%'</code> → içinde "ar" geçenler &nbsp;|&nbsp; <code>LIKE 'ar__'</code> → "ar" ile başlayan tam 4 harfli<br><br>
+<strong>NOT LIKE</strong> → bu kalıba uymayan kayıtlar<br>
+<strong>LENGTH(metin) = 5</strong> → 5 harfli olanlar (alternatif)
+</div>`,
+    examples:[
+      {desc:'"a" ile başlayan isimler',code:"SELECT * FROM ogrenciler WHERE ograd LIKE 'a%'"},
+      {desc:'"a" ile biten isimler',code:"SELECT * FROM ogrenciler WHERE ograd LIKE '%a'"},
+      {desc:'İçinde "ar" geçenler',code:"SELECT * FROM ogrenciler WHERE ograd LIKE '%ar%'"},
+      {desc:'"a" geçmeyenler (NOT LIKE)',code:"SELECT * FROM ogrenciler WHERE ograd NOT LIKE '%a%'"},
+      {desc:'"ar" ile başlayan 4 harfliler',code:"SELECT * FROM ogrenciler WHERE ograd LIKE 'ar__'"},
+      {desc:'Tam 5 harfli isimler',code:"SELECT ograd FROM ogrenciler WHERE LENGTH(ograd) = 5"},
+      {desc:'"a" sonra "e" geçen isimler',code:"SELECT ograd FROM ogrenciler WHERE ograd LIKE '%a%e%'"},
+    ]
+  },
+  {
+    icon:'🧮', title:'Aggregate Fonksiyonlar', sub:'COUNT, SUM, AVG, MIN, MAX',
+    html:`<div class="lesson-title">🧮 Aggregate (Toplama) Fonksiyonları</div>
+<div class="lesson-desc">
+Birden fazla satır üzerinde hesaplama yapar ve tek sonuç döndürür:<br><br>
+• <code>COUNT(*)</code> → Kaç satır var?<br>
+• <code>SUM(kolon)</code> → Toplam<br>
+• <code>AVG(kolon)</code> → Ortalama<br>
+• <code>MIN(kolon)</code> → En küçük<br>
+• <code>MAX(kolon)</code> → En büyük<br><br>
+<code>COUNT(DISTINCT ograd)</code> → Kaç farklı isim var?<br>
+WHERE ile birlikte: <code>SELECT AVG(vize) FROM notlar WHERE derskodu=40</code>
+</div>`,
+    examples:[
+      {desc:'Toplam öğrenci sayısı',code:'SELECT COUNT(*) AS toplam FROM ogrenciler'},
+      {desc:'Erkek öğrenci sayısı',code:"SELECT COUNT(*) FROM ogrenciler WHERE cinsiyet='Erkek'"},
+      {desc:'Farklı isim sayısı',code:'SELECT COUNT(DISTINCT ograd) FROM ogrenciler'},
+      {desc:'Final toplamı',code:'SELECT SUM(final) FROM notlar'},
+      {desc:'Vize ortalaması',code:'SELECT AVG(vize) FROM notlar'},
+      {desc:'En düşük vize',code:'SELECT MIN(vize) FROM notlar'},
+      {desc:'En yüksek vize',code:'SELECT MAX(vize) FROM notlar'},
+      {desc:'Max-min ortalama farkı',code:'SELECT MAX(vize*0.4+final*0.6) - MIN(vize*0.4+final*0.6) AS aralik FROM notlar'},
+      {desc:'Ortalaması >= 50 olan kaç kişi?',code:'SELECT COUNT(*) FROM notlar WHERE (final*0.6 + vize*0.4) >= 50'},
+    ]
+  },
+  {
+    icon:'📅', title:'Tarih & Metin Fonksiyonları', sub:'strftime, SUBSTR, LENGTH, REPLACE',
+    html:`<div class="lesson-title">📅 Tarih ve Metin Fonksiyonları</div>
+<div class="lesson-desc">
+⚠️ Hocamızın PDF'i <strong>MySQL</strong> için. Biz tarayıcıda <strong>SQLite</strong> kullanıyoruz — fonksiyon adları biraz farklı:<br><br>
+<strong>Tarih (MySQL → SQLite):</strong><br>
+• <code>YEAR(tarih)</code> → <code>strftime('%Y', tarih)</code><br>
+• <code>MONTH(tarih)</code> → <code>strftime('%m', tarih)</code><br>
+• <code>DAY(tarih)</code> → <code>strftime('%d', tarih)</code><br><br>
+<strong>Metin (MySQL → SQLite):</strong><br>
+• <code>LEFT(str,n)</code> → <code>SUBSTR(str,1,n)</code><br>
+• <code>RIGHT(str,n)</code> → <code>SUBSTR(str,-n)</code><br>
+• <code>MID(str,pos,len)</code> → <code>SUBSTR(str,pos,len)</code><br>
+• <code>CONCAT(a,b)</code> → <code>a || b</code><br>
+• <code>LENGTH()</code>, <code>REPLACE()</code> → her ikisinde aynı
+</div>`,
+    examples:[
+      {desc:'Doğum yılı',code:"SELECT ogrno, strftime('%Y', dogumtarihi) AS dogum_yili FROM ogrenciler"},
+      {desc:'Doğum ayı',code:"SELECT ogrno, strftime('%m', dogumtarihi) AS dogum_ayi FROM ogrenciler"},
+      {desc:'1988 öncesi doğanlar',code:"SELECT ogrno, dogumtarihi FROM ogrenciler WHERE strftime('%Y', dogumtarihi) < '1988'"},
+      {desc:'Ad + soyad birleştir (|| operatörü)',code:"SELECT ograd || ' ' || ogrsoyad AS tam_ad FROM ogrenciler"},
+      {desc:'İsim uzunluğu',code:'SELECT ograd, LENGTH(ograd) AS uzunluk FROM ogrenciler ORDER BY uzunluk DESC'},
+      {desc:'İsmin ilk 2 harfi (SUBSTR)',code:"SELECT ograd, SUBSTR(ograd, 1, 2) AS ilk_iki FROM ogrenciler"},
+      {desc:'"a" harfini "b" ile değiştir',code:"SELECT ograd, REPLACE(ograd, 'a', 'b') AS degistirilmis FROM ogrenciler"},
+      {desc:'Mesaj oluştur',code:"SELECT ogrno || ' nolu öğrenci vizeden ' || vize || ' almıştır.' AS mesaj FROM notlar"},
+      {desc:'Yaş aralığı (max yıl - min yıl)',code:"SELECT MAX(strftime('%Y',dogumtarihi)) - MIN(strftime('%Y',dogumtarihi)) AS yas_farki FROM ogrenciler"},
+    ]
+  },
+  {
+    icon:'📦', title:'GROUP BY ve HAVING', sub:'Gruplama ve grup filtreleme',
+    html:`<div class="lesson-title">📦 GROUP BY ve HAVING</div>
+<div class="lesson-desc">
+<strong>GROUP BY</strong> verileri gruplara böler, her grup için aggregate hesaplar.<br><br>
+Örnek: "Her bölümde kaçar öğrenci var?"<br>
+<code>SELECT bolumkod, COUNT(*) FROM ogrenciler GROUP BY bolumkod</code><br><br>
+<strong>Sıra:</strong> <code>SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY</code><br><br>
+<strong>WHERE vs HAVING:</strong><br>
+• <code>WHERE</code> → Gruplama <em>öncesi</em> satırları filtreler<br>
+• <code>HAVING</code> → Gruplama <em>sonrası</em> grupları filtreler<br><br>
+⚠️ <strong>HAVING, GROUP BY olmadan kullanılamaz!</strong>
+</div>`,
+    examples:[
+      {desc:'Cinsiyete göre öğrenci sayısı',code:'SELECT cinsiyet, COUNT(*) AS sayi FROM ogrenciler GROUP BY cinsiyet'},
+      {desc:'Derse göre vize ortalaması',code:'SELECT derskodu, AVG(vize) AS ort FROM notlar GROUP BY derskodu'},
+      {desc:'Bölüme göre öğrenci sayısı',code:'SELECT bolumkod, COUNT(*) AS sayi FROM ogrenciler GROUP BY bolumkod'},
+      {desc:'3\'ten fazla öğrencisi olan bölümler (HAVING)',code:'SELECT bolumkod, COUNT(*) FROM ogrenciler GROUP BY bolumkod HAVING COUNT(*) > 3'},
+      {desc:'Vize ort. 70\'den yüksek dersler',code:'SELECT derskodu, AVG(vize) FROM notlar GROUP BY derskodu HAVING AVG(vize) > 70'},
+      {desc:'Max vize 100 olan dersler',code:'SELECT derskodu FROM notlar GROUP BY derskodu HAVING MAX(vize) = 100'},
+      {desc:'Bölüm + cinsiyete göre sayı',code:'SELECT bolumkod, cinsiyet, COUNT(*) FROM ogrenciler GROUP BY bolumkod, cinsiyet'},
+      {desc:'Erkek sayısı 2\'den fazla olan bölümler',code:"SELECT bolumkod, COUNT(*) FROM ogrenciler WHERE cinsiyet='Erkek' GROUP BY bolumkod HAVING COUNT(*) > 2"},
+      {desc:'Max-min vize farkı > 20 olan öğrenciler',code:'SELECT ogrno, MAX(vize)-MIN(vize) AS fark FROM notlar GROUP BY ogrno HAVING fark > 20'},
+    ]
+  },
+  {
+    icon:'🔗', title:'Çoklu Tablo — WHERE Stili', sub:'Tabloları WHERE ile birleştir',
+    html:`<div class="lesson-title">🔗 Birden Fazla Tabloyu Birleştirme (WHERE Stili)</div>
+<div class="lesson-desc">
+Tek tabloda olmayan bilgileri almak için birden fazla tabloyu birleştiririz.<br><br>
+<code>SELECT ograd, vize FROM ogrenciler o, notlar n WHERE o.ogrno = n.ogrno</code><br><br>
+• <code>ogrenciler o</code> → "o" takma adı (kısa yazmak için)<br>
+• <code>o.ogrno = n.ogrno</code> → Ortak alan eşleştirildi<br><br>
+<strong>Altın kural:</strong> N tablo = en az N-1 eşleşme koşulu!<br>
+• 2 tablo → 1 koşul &nbsp;•&nbsp; 3 tablo → 2 koşul &nbsp;•&nbsp; 4 tablo → 3 koşul
+</div>`,
+    examples:[
+      {desc:'Öğrenci adı + vize (2 tablo)',code:'SELECT ograd, vize FROM ogrenciler o, notlar n WHERE o.ogrno = n.ogrno'},
+      {desc:'Ad, ders adı, vize (3 tablo)',code:'SELECT ograd, d.dersadi, n.vize FROM ogrenciler o, notlar n, dersler d\nWHERE o.ogrno = n.ogrno AND d.derskodu = n.derskodu'},
+      {desc:'Öğrenci + bölüm adı',code:'SELECT ograd, bolumad FROM ogrenciler o, bolumler b\nWHERE b.bolumno = o.bolumkod'},
+      {desc:'Arif Sakarya\'nın vize notları',code:"SELECT vize FROM ogrenciler o, notlar n\nWHERE o.ogrno=n.ogrno AND o.ograd='arif' AND o.ogrsoyad='sakarya'"},
+      {desc:'Sınıf Öğretmenliği bölümündekiler',code:"SELECT ograd, ogrsoyad, bolumad FROM bolumler b, ogrenciler o\nWHERE b.bolumno=o.bolumkod AND bolumad='Sınıf Öğretmenliği'"},
+      {desc:'Öğrenci + bölüm + fakülte',code:'SELECT ograd, bolumad, fakultead FROM ogrenciler o, bolumler b, fakulteler f\nWHERE b.bolumno=o.bolumkod AND b.fakulteno=f.fakulteno'},
+      {desc:'3 nolu fakültedeki öğrenciler',code:'SELECT ograd, ogrsoyad, bolumad, fakultead\nFROM ogrenciler o, bolumler b, fakulteler f\nWHERE b.bolumno=o.bolumkod AND b.fakulteno=f.fakulteno AND f.fakulteno=3\nORDER BY o.ogrno'},
+      {desc:'Bölüm adına göre öğrenci sayısı',code:'SELECT b.bolumad, COUNT(*) AS sayi FROM ogrenciler o, bolumler b\nWHERE o.bolumkod=b.bolumno GROUP BY b.bolumad'},
+      {desc:'Vize ort. 70\'den yüksek bölümler',code:'SELECT bolumad, AVG(vize) FROM bolumler b, notlar n, ogrenciler o\nWHERE o.ogrno=n.ogrno AND b.bolumno=o.bolumkod\nGROUP BY bolumad HAVING AVG(vize) > 70'},
+    ]
+  },
+  {
+    icon:'🔀', title:'JOIN Sözdizimi', sub:'INNER JOIN, LEFT JOIN, RIGHT JOIN',
+    html:`<div class="lesson-title">🔀 JOIN Sözdizimi (PDF-2)</div>
+<div class="lesson-desc">
+WHERE stili yerine resmi <strong>JOIN sözdizimi</strong> kullanılabilir — daha okunabilir ve güçlüdür:<br><br>
+<strong>INNER JOIN</strong> → Her iki tabloda eşleşen satırları getirir (WHERE stiliyle aynı sonuç):<br>
+<code>SELECT * FROM bolumler INNER JOIN ogrenciler ON bolumler.bolumno = ogrenciler.bolumkod</code><br><br>
+<strong>LEFT JOIN</strong> → Sol tablodaki TÜM satırlar gelir. Sağda eşleşme yoksa NULL:<br>
+<code>SELECT * FROM bolumler LEFT JOIN ogrenciler ON bolumler.bolumno = ogrenciler.bolumkod</code><br>
+→ Öğrencisi olmayan bölümler de gelir (öğrenci alanları NULL olarak)<br><br>
+<strong>IS NULL ile eşleşmeyenleri bul:</strong><br>
+<code>WHERE ogrenciler.ogrno IS NULL</code> → Öğrencisi hiç olmayan bölümler<br>
+<code>WHERE notlar.vize IS NULL</code> → Notu hiç girilmemiş öğrenciler<br><br>
+<strong>3 tablo JOIN (parantezli yazım):</strong><br>
+<code>FROM (tablo1 INNER JOIN tablo2 ON ...) INNER JOIN tablo3 ON ...</code>
+</div>`,
+    examples:[
+      {desc:'INNER JOIN (WHERE stiliyle aynı sonuç)',code:'SELECT b.bolumad, o.ograd FROM bolumler b INNER JOIN ogrenciler o ON b.bolumno = o.bolumkod'},
+      {desc:'LEFT JOIN — tüm bölümler (öğrencisi olmayanlar da)',code:'SELECT b.bolumad, o.ograd FROM bolumler b LEFT JOIN ogrenciler o ON b.bolumno = o.bolumkod'},
+      {desc:'Öğrencisi OLMAYAN bölümler (IS NULL)',code:'SELECT bolumad FROM bolumler LEFT JOIN ogrenciler\nON bolumler.bolumno = ogrenciler.bolumkod\nWHERE ogrenciler.ogrno IS NULL'},
+      {desc:'Vize notu GİRİLMEMİŞ öğrenciler',code:'SELECT ograd, ogrsoyad, ogrenciler.ogrno FROM ogrenciler LEFT JOIN notlar\nON ogrenciler.ogrno = notlar.ogrno WHERE notlar.vize IS NULL'},
+      {desc:'Ders adı, max vize, ort vize (INNER JOIN + GROUP BY)',code:'SELECT d.dersadi, MAX(vize), AVG(vize) FROM notlar n INNER JOIN dersler d\nON d.derskodu = n.derskodu GROUP BY d.dersadi'},
+      {desc:'Resim bölümü final ort. (iç içe INNER JOIN)',code:'SELECT AVG(final) FROM (ogrenciler o INNER JOIN notlar n ON n.ogrno = o.ogrno)\nINNER JOIN bolumler b ON o.bolumkod = b.bolumno AND b.bolumad = "Resim"'},
+      {desc:'3 tablo INNER JOIN (öğrenci + bölüm + fakülte)',code:'SELECT o.ograd, o.ogrsoyad, b.bolumad, f.fakultead\nFROM (bolumler b INNER JOIN ogrenciler o ON b.bolumno = o.bolumkod)\nINNER JOIN fakulteler f ON b.fakulteno = f.fakulteno'},
+      {desc:'Bölüm adına göre final ortalamaları',code:'SELECT bolumad, AVG(final) FROM (bolumler INNER JOIN ogrenciler\nON bolumler.bolumno = ogrenciler.bolumkod)\nINNER JOIN notlar ON ogrenciler.ogrno = notlar.ogrno\nGROUP BY bolumno'},
+    ]
+  },
+  {
+    icon:'🪆', title:'İç İçe SELECT', sub:'Subquery — Alt Sorgu',
+    html:`<div class="lesson-title">🪆 İç İçe SELECT (Subquery / PDF-2)</div>
+<div class="lesson-desc">
+<strong>İç içe SELECT</strong> → Bir sorgunun içine başka bir sorgu yazmak.<br><br>
+İçteki SELECT önce çalışır, sonucu dış SELECT'e parametre olur:<br>
+<code>SELECT ogrno FROM notlar WHERE vize = (SELECT MAX(vize) FROM notlar)</code><br>
+→ İçteki: MAX(vize)=100 bulur &nbsp;→&nbsp; Dıştaki: vize=100 olanları getirir<br><br>
+<strong>= vs IN:</strong><br>
+• <code>=</code> → İçteki SELECT sadece 1 değer döndürecekse<br>
+• <code>IN</code> → İçteki SELECT birden fazla değer döndürebiliyorsa<br><br>
+<strong>Çok katmanlı olabilir:</strong><br>
+<code>WHERE ogrno IN (SELECT ogrno FROM notlar WHERE vize = (SELECT MAX(vize) FROM notlar))</code>
+</div>`,
+    examples:[
+      {desc:'En yüksek vizeyi alan öğrencilerin numaraları',code:'SELECT ogrno FROM notlar WHERE vize = (SELECT MAX(vize) FROM notlar)'},
+      {desc:'En yüksek vizeyi alan öğrencilerin ad-soyadı',code:'SELECT ograd, ogrsoyad FROM ogrenciler WHERE ogrno IN\n(SELECT ogrno FROM notlar WHERE vize = (SELECT MAX(vize) FROM notlar))'},
+      {desc:'Ortalama vizenin ALTINDA kalan öğrenciler',code:'SELECT ogrno FROM notlar WHERE vize < (SELECT AVG(vize) FROM notlar)'},
+      {desc:'Ortalama vizeden YÜKSEK alan öğrenciler',code:'SELECT o.ogrno, o.ograd FROM notlar n, ogrenciler o\nWHERE vize > (SELECT AVG(vize) FROM notlar) AND o.ogrno = n.ogrno'},
+      {desc:'Programlama dersini alan öğrenciler',code:"SELECT ogrno, ograd, ogrsoyad FROM ogrenciler WHERE ogrno IN\n(SELECT ogrno FROM notlar WHERE derskodu = (SELECT derskodu FROM dersler WHERE dersadi='programlama'))"},
+      {desc:'En küçük bölümdeki öğrenciler',code:'SELECT * FROM ogrenciler WHERE bolumkod = (SELECT MIN(bolumkod) FROM ogrenciler)'},
+      {desc:'3 nolu fakültedeki öğrenciler',code:'SELECT ograd, ogrsoyad FROM ogrenciler\nWHERE bolumkod IN (SELECT bolumno FROM bolumler WHERE fakulteno = 3)'},
+      {desc:'Bölüm no 50\'den büyük bölümlerdeki öğrenciler',code:'SELECT * FROM ogrenciler WHERE bolumkod IN (SELECT bolumno FROM bolumler WHERE bolumno > 50)'},
+      {desc:'30 nolu derste ort. vizenin altında kalanlar',code:'SELECT ogrno, ograd FROM ogrenciler WHERE ogrno IN\n(SELECT ogrno FROM notlar WHERE vize < (SELECT AVG(vize) FROM notlar WHERE derskodu=30) AND derskodu=30)'},
+      {desc:'50 nolu derste en düşük vizeye sahip öğrenciler',code:'SELECT ograd FROM ogrenciler WHERE ogrno IN\n(SELECT ogrno FROM notlar WHERE vize=(SELECT MIN(vize) FROM notlar WHERE derskodu=50) AND derskodu=50)'},
+      {desc:'"a" ile başlayan öğrencilerin vize ortalaması',code:"SELECT AVG(vize) FROM notlar WHERE ogrno IN\n(SELECT ogrno FROM ogrenciler WHERE ograd LIKE 'a%')"},
+      {desc:'Ort. vize 60\'dan yüksek öğrencilerin bölüm adları',code:'SELECT bolumad FROM bolumler WHERE bolumno IN\n(SELECT bolumkod FROM ogrenciler WHERE ogrno IN\n(SELECT ogrno FROM notlar GROUP BY ogrno HAVING AVG(vize) > 60))'},
+      {desc:'Ort. vize 60\'dan yüksek bölümlerdeki toplam öğrenci sayısı',code:'SELECT COUNT(*) FROM ogrenciler WHERE bolumkod IN\n(SELECT o.bolumkod FROM ogrenciler o, notlar n WHERE o.ogrno=n.ogrno\nGROUP BY o.bolumkod HAVING AVG(vize) > 60)'},
+    ]
+  },
+],
+
+alisveris: [
+  {
+    icon:'🗄️', title:'Alışveriş Veritabanı', sub:'Tablolara Genel Bakış',
+    html:`<div class="lesson-title">🛒 Alışveriş Veritabanı Yapısı</div>
+<div class="lesson-desc">
+Bu veritabanı bir <strong>online alışveriş sitesinin</strong> satış sistemini temsil ediyor. 5 tablo var:<br><br>
+🏷️ <strong>kategoriler</strong> → Ürün kategorileri (bilgisayar, laptop, tv, cep telefonu, kitap, CD)<br>
+📦 <strong>urunler</strong> → Ürünler, fiyatları ve stok miktarları<br>
+👤 <strong>musteriler</strong> → Müşteri bilgileri (ad, soyad, tel, email, şehir)<br>
+🧾 <strong>satis</strong> → Her satış işlemi (hangi müşteri, ne zaman, toplam fiyat)<br>
+📋 <strong>satis_detay</strong> → Her satıştaki ürünler ve miktarları<br><br>
+<strong>İlişkiler:</strong><br>
+urunler.k_no → kategoriler.k_no &nbsp;&nbsp; satis.m_no → musteriler.m_no<br>
+satis_detay.s_no → satis.s_no &nbsp;&nbsp; satis_detay.u_no → urunler.u_no
+</div>
+<div id="schema-here"></div>`,
+    examples:[
+      {desc:'Tüm müşterileri gör',code:'SELECT * FROM musteriler'},
+      {desc:'Tüm ürünleri gör',code:'SELECT * FROM urunler'},
+      {desc:'Tüm kategorileri gör',code:'SELECT * FROM kategoriler'},
+      {desc:'Tüm satışları gör',code:'SELECT * FROM satis'},
+      {desc:'Satış detaylarını gör',code:'SELECT * FROM satis_detay'},
+    ]
+  },
+  {
+    icon:'📊', title:'Temel Sorgular & Gruplama', sub:'SELECT, WHERE, GROUP BY, LIKE',
+    html:`<div class="lesson-title">📊 Temel Sorgular ve Gruplama</div>
+<div class="lesson-desc">
+Bu derste alışveriş veritabanı üzerinde temel sorgular çalışıyoruz.<br><br>
+⚠️ <strong>SQLite farkları:</strong><br>
+• MySQL <code>RIGHT(email,9)</code> → SQLite: <code>SUBSTR(email,-9)</code><br>
+• MySQL <code>MID(tel,2,3)</code> → SQLite: <code>SUBSTR(tel,2,3)</code><br>
+• MySQL <code>LEFT(ad,1)</code> → SQLite: <code>SUBSTR(ad,1,1)</code><br>
+• MySQL <code>CONCAT(a,b)</code> → SQLite: <code>a || b</code><br><br>
+<code>ORDER BY count(*) DESC LIMIT 1</code> → En büyük grubu bul
+</div>`,
+    examples:[
+      {desc:'1. gmail.com uzantılı kaç müşteri var?',code:"SELECT COUNT(*) AS gmail_musteri FROM musteriler WHERE email LIKE '%gmail.com'"},
+      {desc:'1. Alternatif: SUBSTR ile (RIGHT yerine)',code:"SELECT COUNT(*) FROM musteriler WHERE SUBSTR(email,-9) = 'gmail.com'"},
+      {desc:'2. Tel\'den operatör kodu al ve say (MID yerine SUBSTR)',code:'SELECT SUBSTR(tel,2,3) AS operator, COUNT(*) FROM musteriler GROUP BY SUBSTR(tel,2,3)'},
+      {desc:'5. Her kategorideki ürünlerin ortalama fiyatı',code:'SELECT k.ad, AVG(fiyat) AS ort_fiyat FROM urunler u, kategoriler k WHERE k.k_no=u.k_no GROUP BY u.k_no'},
+      {desc:'7. Her kategoride kaç ürün var?',code:'SELECT k.ad, COUNT(*) AS urun_sayisi FROM urunler u, kategoriler k WHERE u.k_no=k.k_no GROUP BY u.k_no'},
+      {desc:'8. Her kategoride toplam kaç liralık ürün?',code:'SELECT k.ad, SUM(fiyat) AS toplam FROM urunler u, kategoriler k WHERE u.k_no=k.k_no GROUP BY k.ad'},
+      {desc:'10. Şehir bazında satış adeti',code:'SELECT m.sehir, COUNT(*) AS satis_sayisi FROM musteriler m, satis s WHERE s.m_no=m.m_no GROUP BY m.sehir'},
+      {desc:'11. Şehir bazında toplam satış tutarı',code:'SELECT m.sehir, SUM(s.t_fiyat) AS toplam FROM satis s, musteriler m WHERE s.m_no=m.m_no GROUP BY m.sehir'},
+      {desc:'13. 5\'ten fazla ürün olan kategoriler',code:'SELECT k_no, COUNT(u_no) AS sayi FROM urunler GROUP BY k_no HAVING COUNT(u_no) >= 5'},
+      {desc:'14. Müşteri sayısı 2 olan şehirler',code:'SELECT sehir, COUNT(m_no) AS sayi FROM musteriler GROUP BY sehir HAVING COUNT(*) = 2'},
+      {desc:'Şehir bazında müşteri sayısı (azdan çoğa)',code:'SELECT sehir, COUNT(*) AS sayi FROM musteriler GROUP BY sehir ORDER BY sayi DESC'},
+    ]
+  },
+  {
+    icon:'🔗', title:'Çoklu Tablo & JOIN', sub:'Tabloları birleştir, LEFT JOIN',
+    html:`<div class="lesson-title">🔗 Çoklu Tablo ve JOIN</div>
+<div class="lesson-desc">
+Alışveriş veritabanında bazı sorgular 4 tabloyu birleştirmek gerektirebilir!<br><br>
+<strong>Tipik bağlantı zinciri:</strong><br>
+<code>musteriler → satis → satis_detay → urunler → kategoriler</code><br><br>
+Bir müşterinin hangi ürünü aldığını bulmak için bu 4 tablonun hepsini birleştirmen gerekir.<br><br>
+<strong>LEFT JOIN IS NULL</strong> → Hiç satılmamış ürünler gibi "eşleşmeyenleri" bulmak için:<br>
+<code>SELECT ad FROM urunler u LEFT JOIN satis_detay sd ON u.u_no=sd.u_no WHERE sd.u_no IS NULL</code>
+</div>`,
+    examples:[
+      {desc:'3. IBM pc\'yi alan kişiler (tablo eşleştirme)',code:"SELECT m.ad, m.soyad FROM musteriler m, satis s, satis_detay sd, urunler u\nWHERE m.m_no=s.m_no AND s.s_no=sd.s_no AND sd.u_no=u.u_no AND u.ad='Ibm pc'"},
+      {desc:'4. 2 alışveriş yapan kişiler',code:'SELECT ad, soyad FROM musteriler m, satis s WHERE m.m_no=s.m_no GROUP BY s.m_no HAVING COUNT(*)=2'},
+      {desc:'6. En çok harcayan müşteri (LIMIT)',code:'SELECT ad, soyad FROM musteriler WHERE m_no = (SELECT m_no FROM satis GROUP BY m_no ORDER BY SUM(t_fiyat) DESC LIMIT 1)'},
+      {desc:'12. Mahmut Özdemir\'in satış detayları',code:"SELECT sd.* FROM satis_detay sd, musteriler m, satis s\nWHERE sd.s_no=s.s_no AND s.m_no=m.m_no AND m.ad='mahmut' AND m.soyad='özdemir'"},
+      {desc:'26. En çok satılan ürünün adı',code:'SELECT ad FROM urunler WHERE u_no IN\n(SELECT u_no FROM satis_detay WHERE miktar IN (SELECT MAX(miktar) FROM satis_detay))'},
+      {desc:'28. En çok satılan ürünü alanlar',code:'SELECT m.* FROM satis s, satis_detay sd, musteriler m\nWHERE m.m_no=s.m_no AND sd.s_no=s.s_no\nAND sd.u_no=(SELECT u_no FROM satis_detay WHERE miktar=(SELECT MAX(miktar) FROM satis_detay))'},
+      {desc:'31. Bilgisayar kategorisinden alan müşteriler',code:"SELECT m.*, s.tarih, s.t_fiyat FROM musteriler m, satis s\nWHERE m.m_no=s.m_no AND s.s_no IN\n(SELECT s_no FROM satis_detay WHERE u_no IN\n(SELECT u.u_no FROM kategoriler k, urunler u WHERE k.k_no=u.k_no AND k.ad='bilgisayar'))"},
+      {desc:'34. En çok tutarda alışveriş yapan şehir',code:'SELECT m.sehir FROM musteriler m, satis s WHERE s.m_no=m.m_no\nGROUP BY m.sehir ORDER BY SUM(s.t_fiyat) DESC LIMIT 1'},
+      {desc:'35. Hiç satılmamış ürünler (LEFT JOIN IS NULL)',code:'SELECT ad, u.u_no FROM urunler u LEFT JOIN satis_detay sd ON u.u_no=sd.u_no\nWHERE sd.u_no IS NULL'},
+    ]
+  },
+  {
+    icon:'🪆', title:'İç İçe SELECT', sub:'Subquery — Alışveriş DB',
+    html:`<div class="lesson-title">🪆 İç İçe SELECT — Alışveriş Veritabanı</div>
+<div class="lesson-desc">
+Alışveriş veritabanında iç içe SELECT'ler çok derin olabilir (4-5 katman)!<br><br>
+<strong>Örnek zincir:</strong><br>
+"En ucuz ürünü alan müşteri kimdir?"<br>
+<code>musteriler → satis → satis_detay → urunler(MIN fiyat)</code><br><br>
+Her adım bir alt sorgu ile çözülür:<br>
+1. <code>SELECT MIN(fiyat) FROM urunler</code> → en ucuz fiyat<br>
+2. <code>SELECT u_no FROM urunler WHERE fiyat=(adım1)</code> → ürün no<br>
+3. <code>SELECT s_no FROM satis_detay WHERE u_no=(adım2)</code> → satış no<br>
+4. <code>SELECT m_no FROM satis WHERE s_no=(adım3)</code> → müşteri no<br>
+5. <code>SELECT ad,soyad FROM musteriler WHERE m_no=(adım4)</code> → isim
+</div>`,
+    examples:[
+      {desc:'3. IBM pc\'yi alan kişiler (içiçe select)',code:"SELECT ad, soyad FROM musteriler WHERE m_no IN\n(SELECT m_no FROM satis WHERE s_no IN\n(SELECT s_no FROM satis_detay WHERE u_no=\n(SELECT u_no FROM urunler WHERE ad='Ibm pc')))"},
+      {desc:'9. En ucuz ürünü alan müşteri',code:'SELECT ad, soyad FROM musteriler WHERE m_no IN\n(SELECT m_no FROM satis WHERE s_no=\n(SELECT s_no FROM satis_detay WHERE u_no=\n(SELECT u_no FROM urunler WHERE fiyat=(SELECT MIN(fiyat) FROM urunler))))'},
+      {desc:'15. Sony içeren ürünlerin kategorisi',code:"SELECT ad FROM kategoriler WHERE k_no IN\n(SELECT k_no FROM urunler WHERE ad LIKE '%sony%')"},
+      {desc:'16. En pahalı ürünün kategorisi',code:'SELECT ad FROM kategoriler WHERE k_no IN\n(SELECT k_no FROM urunler WHERE fiyat IN (SELECT MAX(fiyat) FROM urunler))'},
+      {desc:'17. En çok ürün çeşidi olan kategori',code:'SELECT ad FROM kategoriler WHERE k_no=\n(SELECT k_no FROM urunler GROUP BY k_no ORDER BY COUNT(*) DESC LIMIT 1)'},
+      {desc:'21. En fazla miktarda satılan ürünün kategorisi',code:'SELECT ad FROM kategoriler WHERE k_no IN\n(SELECT k_no FROM urunler WHERE u_no IN\n(SELECT u_no FROM satis_detay WHERE miktar IN (SELECT MAX(miktar) FROM satis_detay)))'},
+      {desc:'22. Ort. fiyattan düşük ürünleri alan müşteriler (DISTINCT)',code:'SELECT DISTINCT m.m_no, m.ad FROM urunler u, satis_detay sd, satis s, musteriler m\nWHERE u.u_no=sd.u_no AND sd.s_no=s.s_no AND s.m_no=m.m_no\nAND fiyat < (SELECT AVG(fiyat) FROM urunler)'},
+      {desc:'25. Fiyatı 500\'den fazla ürün alan müşterilerin şehirleri',code:'SELECT sehir, COUNT(*) FROM musteriler WHERE m_no IN\n(SELECT m_no FROM satis WHERE s_no IN\n(SELECT s_no FROM satis_detay WHERE u_no IN\n(SELECT u_no FROM urunler WHERE fiyat > 500))) GROUP BY sehir'},
+      {desc:'24. 2013 öncesi satışların ort. fiyatı (strftime)',code:"SELECT AVG(t_fiyat) FROM satis WHERE strftime('%Y', tarih) < '2013'"},
+      {desc:'19. 3. kategoride en az stoklu ürünler',code:"SELECT u.ad, u.u_no FROM urunler u, kategoriler k\nWHERE u.k_no=k.k_no AND stok=(SELECT MIN(stok) FROM urunler u2, kategoriler k2\nWHERE u2.k_no=k2.k_no) AND k.k_no=3"},
+    ]
+  },
+  {
+    icon:'🏆', title:'İleri Seviye Sorular', sub:'Öğrenci Örnekleri (PDF)',
+    html:`<div class="lesson-title">🏆 İleri Seviye — Öğrenci Örnekleri</div>
+<div class="lesson-desc">
+Bunlar PDF'deki en zor sorular. Birden fazla tekniği (JOIN, subquery, GROUP BY, HAVING, LIKE, SUBSTR) aynı anda kullanıyorlar.<br><br>
+⚠️ <strong>SQLite adaptasyonları:</strong><br>
+• <code>CONCAT(a,b)</code> → <code>a || b</code><br>
+• <code>LEFT(str,n)</code> → <code>SUBSTR(str,1,n)</code><br>
+• <code>RIGHT(str,n)</code> → <code>SUBSTR(str,-n)</code><br>
+• <code>YEAR(tarih)</code> → <code>strftime('%Y', tarih)</code><br>
+• <code>LENGTH()</code> → aynı (SQLite'da da çalışır)
+</div>`,
+    examples:[
+      {desc:'S1. Şehir bazında müşteri sayısı (azdan çoğa)',code:'SELECT sehir, COUNT(*) AS sayi FROM musteriler GROUP BY sehir ORDER BY sayi DESC'},
+      {desc:'S2. Ortalamanın üstünde harcayan müşterilerin maskeli adı ve teli',code:"SELECT SUBSTR(ad,1,1)||'***' AS maskeli_ad,\n       SUBSTR(tel,1,4)||'****'||SUBSTR(tel,-2) AS maskeli_tel\nFROM musteriler WHERE m_no IN\n(SELECT m_no FROM satis GROUP BY m_no\nHAVING SUM(t_fiyat) > (SELECT AVG(t_fiyat) FROM satis))"},
+      {desc:'S3. TV kategorisi şehirlerde kaç müşteri ve kaç adet',code:"SELECT m.sehir, COUNT(DISTINCT m.m_no) AS musteri, SUM(sd.miktar) AS adet\nFROM musteriler m, satis s, satis_detay sd, urunler u, kategoriler k\nWHERE m.m_no=s.m_no AND s.s_no=sd.s_no AND sd.u_no=u.u_no AND u.k_no=k.k_no\nAND k.ad='televizyon' GROUP BY m.sehir ORDER BY adet DESC"},
+      {desc:'S5. 2012+ alışveriş, toplam > 1000 TL olanlar (strftime)',code:"SELECT m.ad, m.soyad, SUM(s.t_fiyat) AS toplam\nFROM musteriler m JOIN satis s ON m.m_no=s.m_no\nWHERE strftime('%Y', s.tarih) >= '2012'\nGROUP BY m.m_no HAVING SUM(s.t_fiyat) > 1000\nORDER BY SUM(s.t_fiyat)"},
+      {desc:'S6. HP Laptop\'u satın alan müşteriler ve kaç kez aldıkları',code:"SELECT m.ad, m.soyad, COUNT(s.s_no) AS kac_kez\nFROM musteriler m, satis s WHERE m.m_no=s.m_no\nAND s.s_no IN (SELECT s_no FROM satis_detay WHERE u_no=\n(SELECT u_no FROM urunler WHERE ad='HP laptop'))\nGROUP BY m.m_no"},
+      {desc:'S7. \'a\' ile biten şehirler — ürün adları ve toplam tutar (> 1000)',code:"SELECT u.ad AS urun, SUM(u.fiyat * sd.miktar) AS toplam\nFROM musteriler m, satis s, satis_detay sd, urunler u\nWHERE m.m_no=s.m_no AND s.s_no=sd.s_no AND sd.u_no=u.u_no\nAND m.sehir LIKE '%a'\nGROUP BY u.u_no HAVING toplam > 1000"},
+      {desc:'S8. Maskeli tel, 1\'den fazla çeşit ürün alan müşteriler',code:"SELECT m.ad, '***'||SUBSTR(m.tel,-2) AS maskeli_tel,\n       COUNT(DISTINCT sd.u_no) AS cesit\nFROM musteriler m, satis s, satis_detay sd\nWHERE m.m_no=s.m_no AND s.s_no=sd.s_no\nGROUP BY m.m_no HAVING COUNT(DISTINCT sd.u_no) > 1"},
+      {desc:'S9. 2012-2013 alışveriş, toplam > 500, büyükten küçüğe',code:"SELECT m.ad || ' ' || m.soyad AS tam_ad,\n       COUNT(DISTINCT s.tarih) AS farkli_gun,\n       SUM(s.t_fiyat) AS toplam\nFROM musteriler m INNER JOIN satis s ON m.m_no=s.m_no\nWHERE strftime('%Y',s.tarih) IN ('2012','2013')\nGROUP BY m.m_no HAVING SUM(s.t_fiyat) > 500\nORDER BY toplam DESC"},
+      {desc:'S10. Şehir adı > 5 harf, ciro > genel ort.',code:"SELECT m.sehir, COUNT(s.s_no) AS fis, SUM(s.t_fiyat) AS ciro\nFROM musteriler m INNER JOIN satis s ON m.m_no=s.m_no\nWHERE LENGTH(m.sehir) > 5\nGROUP BY m.sehir\nHAVING SUM(s.t_fiyat) > (SELECT AVG(t_fiyat) FROM satis)\nORDER BY ciro DESC"},
+      {desc:'S11. Kategoriye göre ort. fiyat ve toplam stok',code:'SELECT k.ad, AVG(u.fiyat) AS ort_fiyat, SUM(u.stok) AS toplam_stok\nFROM urunler u, kategoriler k WHERE u.k_no=k.k_no\nGROUP BY u.k_no ORDER BY toplam_stok DESC'},
+      {desc:'S12. İsminde \'a\' geçen müşterilerin toplam harcaması',code:"SELECT m.ad, m.soyad, m.sehir, SUM(s.t_fiyat) AS toplam\nFROM musteriler m JOIN satis s ON m.m_no=s.m_no\nWHERE m.ad LIKE '%a%' GROUP BY m.m_no"},
+    ]
+  },
+]
+
+}; // end ALL_LESSONS
+
+// =============================================
+// SCHEMA DEFINITIONS
+// =============================================
+const ALL_SCHEMA = {
+  vtders: {
+    fakulteler:{cols:[['fakulteno','INTEGER','pk'],['fakultead','TEXT','']]},
+    bolumler:{cols:[['bolumno','INTEGER','pk'],['bolumad','TEXT',''],['fakulteno','INTEGER','fk']]},
+    ogrenciler:{cols:[['ogrno','INTEGER','pk'],['ograd','TEXT',''],['ogrsoyad','TEXT',''],['cinsiyet','TEXT',''],['dogumtarihi','DATE',''],['bolumkod','INTEGER','fk']]},
+    dersler:{cols:[['derskodu','INTEGER','pk'],['dersadi','TEXT',''],['teorikkredi','INT',''],['uygulamakredi','INT','']]},
+    notlar:{cols:[['ogrno','INTEGER','fk'],['derskodu','INTEGER','fk'],['vize','INTEGER',''],['final','INTEGER',''],['but','INTEGER',''],['durum','TEXT','']]}
+  },
+  alisveris: {
+    kategoriler:{cols:[['k_no','INTEGER','pk'],['ad','TEXT','']]},
+    musteriler:{cols:[['m_no','INTEGER','pk'],['ad','TEXT',''],['soyad','TEXT',''],['tel','TEXT',''],['email','TEXT',''],['adres','TEXT',''],['sehir','TEXT','']]},
+    urunler:{cols:[['u_no','INTEGER','pk'],['k_no','INTEGER','fk'],['ad','TEXT',''],['fiyat','INTEGER',''],['stok','INTEGER','']]},
+    satis:{cols:[['s_no','INTEGER','pk'],['m_no','INTEGER','fk'],['tarih','DATE',''],['t_fiyat','INTEGER','']]},
+    satis_detay:{cols:[['d_no','INTEGER','pk'],['s_no','INTEGER','fk'],['u_no','INTEGER','fk'],['miktar','INTEGER','']]}
+  }
+};
+
+// =============================================
+// INIT SQL
+// =============================================
+const INIT_SQL = {
+
+vtders: `
+CREATE TABLE fakulteler (fakulteno INTEGER PRIMARY KEY, fakultead TEXT NOT NULL);
+INSERT INTO fakulteler VALUES (1,'Teknik Eğitim Fakültesi'),(3,'Mühendislik Fakültesi'),(4,'Orman Fakültesi'),(5,'Fen Edebiyat Fakültesi'),(6,'Eğitim Fakültesi'),(7,'İktisadi ve İdari Bilimler Fakultesi'),(8,'Tıp Fakultesi');
+CREATE TABLE bolumler (bolumno INTEGER PRIMARY KEY, bolumad TEXT NOT NULL, fakulteno INTEGER NOT NULL);
+INSERT INTO bolumler VALUES (10,'Sınıf Öğretmenliği',1),(15,'Matematik Öğretmenliği',1),(20,'Okul Öğrencisi Öğretmenliği',1),(30,'Kimya',5),(40,'Biyoloji',5),(50,'Tarih',5),(60,'Fizik',5),(70,'Felsefe',5),(90,'Müzik',6),(100,'Resim',6),(120,'Bilgisayar Mühendisliği',3),(125,'Elektrik Mühendisliği',3),(130,'Bilgisayar Öğretmenliği',1),(180,'Tıp',8);
+CREATE TABLE dersler (derskodu INTEGER PRIMARY KEY, dersadi TEXT NOT NULL, teorikkredi INTEGER NOT NULL, uygulamakredi INTEGER NOT NULL);
+INSERT INTO dersler VALUES (15,'matematik',3,0),(25,'fizik',3,1),(30,'programlama',3,2),(40,'veritabanı',3,2),(50,'TBT',3,1);
+CREATE TABLE ogrenciler (ogrno INTEGER PRIMARY KEY, ograd TEXT NOT NULL, ogrsoyad TEXT NOT NULL, cinsiyet TEXT NOT NULL, dogumtarihi TEXT NOT NULL, bolumkod INTEGER NOT NULL);
+INSERT INTO ogrenciler VALUES (2,'Mehmet','yılmaz','Erkek','1988-12-05',120),(5,'ahmet','kaya','Erkek','1965-11-12',30),(6,'mahmut','solmaz','Erkek','1987-02-25',100),(12,'aykut','saka','Erkek','1990-05-29',60),(15,'arif','sakarya','Erkek','1985-02-11',60),(22,'ali veli','solaz','Erkek','1974-05-05',100),(25,'Halime','Avcı','Kadın','1982-09-01',90),(28,'suna','kaya','Kadın','1992-11-11',120),(29,'emine','solmaz','Kadın','1986-03-02',60),(30,'fatma','yıldırım','Kadın','2000-05-03',10),(32,'Alime','Kocabaş','Kadın','1992-01-02',50),(66,'idil','kayapınar','Kadın','1968-06-05',15),(70,'burhanettin','gümüş','erkek','1967-12-12',20),(71,'hatice','güneş','Kadın','1971-10-06',30),(72,'Hatice','Güngör','Kadın','1965-04-13',40),(80,'Arif','Doğan','Erkek','1945-03-03',60),(83,'Seda','Savcı','Kadın','1974-08-09',90),(85,'Veli','Doğan','Erkek','1978-09-06',70),(88,'Ali','olgun','Erkek','1975-04-22',120),(90,'Serdar','karaman','Erkek','1999-10-10',10),(91,'Selami','akkaya','Erkek','1987-05-18',20),(92,'Merve','sarp','Kadın','1984-08-14',50),(93,'Bülent','kaya','Erkek','1989-05-18',90),(94,'Sinan','karaca','Erkek','1974-08-21',100),(95,'Emrah','yener','Erkek','1999-05-12',180),(96,'Ali','veli','Erkek','1996-05-03',120),(97,'Fatma','yılmaz','Kadın','1998-05-18',50),(98,'Mehmet','kayalı','Erkek','1997-05-18',20),(99,'Memnune','solmaz','Kadın','1999-05-18',10),(100,'Salih','durmaz','Erkek','1991-08-18',50),(101,'İsmail','Kalkan','Erkek','1991-08-20',40),(102,'Öykü','Erkaya','Kadın','1992-01-02',40),(103,'Emre','Aktuğ','Erkek','1987-05-05',50),(104,'Ayşegül','Dursun','Kadın','1990-12-05',60),(105,'Mustafa','İnan','Erkek','1992-02-03',50);
+CREATE TABLE notlar (ogrno INTEGER NOT NULL, derskodu INTEGER NOT NULL, vize INTEGER NOT NULL, final INTEGER NOT NULL, but INTEGER NOT NULL, durum TEXT NOT NULL);
+INSERT INTO notlar VALUES (12,40,56,85,15,'0'),(12,50,71,85,80,'0'),(15,40,21,65,70,'0'),(15,30,61,70,70,'0'),(22,30,100,100,90,'0'),(22,50,66,75,75,'0'),(28,25,100,50,60,'0'),(66,30,91,50,80,'0'),(85,15,90,40,75,'0'),(99,15,60,70,55,'0'),(91,40,10,53,60,'0'),(29,40,80,100,100,'0'),(29,30,70,90,60,'0'),(91,50,60,70,45,'0'),(22,25,85,75,45,'0'),(32,25,40,50,80,'0'),(66,25,40,50,80,'0'),(72,15,10,40,20,'0');
+`,
+
+alisveris: `
+CREATE TABLE kategoriler (k_no INTEGER PRIMARY KEY, ad TEXT NOT NULL);
+INSERT INTO kategoriler VALUES (1,'bilgisayar'),(2,'laptop'),(3,'televizyon'),(4,'cep telefonu'),(5,'kitap'),(6,'CD');
+CREATE TABLE musteriler (m_no INTEGER PRIMARY KEY, ad TEXT, soyad TEXT, tel TEXT, email TEXT, adres TEXT, sehir TEXT);
+INSERT INTO musteriler VALUES (1,'murat','koç','05054445566','muratkoc@hotmail.com','istasyon','ısparta'),(2,'ali','gelim','05442324567','aligelim@hotmail.com','anadolu mah','ısparta'),(3,'nurullah','öztürk','05323452233','nurullahozturk@gmail.com','bahcelievler','istanbul'),(4,'ufuk','üresin','05556786567','ufukuresin@gmail.com','kecioren','ankara'),(5,'ömer','işler','05465562390','omerisl@hotmail.com','karşıyaka','izmir'),(6,'yunus','döner','05431223456','yunusdoner@hotmail.com','yalvac','ısparta'),(7,'önder','yılmaz','05324553434','onderyilmaz@hotmail.com','yalvac','ısparta'),(8,'basak','toru','05542768455','basaktoru@hotmail.com','çevreyolu','antalya'),(9,'kübra','yanar','05442337989','kyanar@yahoo.com','manavgat','antalya'),(10,'seda','kurt','05542348455','kurtseda@yahoo.com','dedeman','antalya'),(11,'cem','cite','05547348455','cite@hotmail.com','güllük','antalya'),(12,'akın','çandır','05564423678','akincan@gmail.com','bergama','izmir'),(13,'halid','keskin','05433456790','halidkeskin@gmail.com','mecidiyeköy','istanbul'),(14,'beklan','benzer','05334568080','bekln@hotmail.com','kartal','istanbul'),(15,'mahmut','özdemir','05321234433','info@mahmutozdemir.com','dikmen','ankara'),(16,'cem','okuyan','05067779696','cemokuyan@hede.com','yalvac','ısparta'),(17,'arda','yuksel','05434456565','sadsda@ssad.cok','tokta','yolar'),(18,'yunus','keser','05445676677','yunuskeser@sdu.edu.tr','yalvac','ısparta'),(19,'arda','çelik','05665432322','sinanscelik@hotmail.com','keçiören','ankara');
+CREATE TABLE urunler (u_no INTEGER PRIMARY KEY, k_no INTEGER, ad TEXT, fiyat INTEGER, stok INTEGER);
+INSERT INTO urunler VALUES (1,1,'Casper pc',800,12),(2,1,'Ibm pc',900,14),(3,1,'HP pc',1200,0),(4,1,'Toshiba pc',1600,9),(5,1,'Exper pc',1250,10),(6,2,'sony laptop',2100,5),(7,2,'HP laptop',1400,7),(8,2,'Toshiba laptop',1600,0),(9,3,'Vestel Plazma tv',2200,4),(10,3,'Samsung tv',800,13),(11,3,'Philips tv',750,5),(12,3,'Sony tv',900,16),(13,3,'Samsung Plazma tv',3400,0),(14,3,'LG Plazma tv',5600,5),(15,3,'Samsung Plazma tv',3400,6),(16,4,'Nokia Series',500,14),(17,4,'Samsung Series',600,6),(18,4,'Apple Series',1000,4),(19,4,'HTC Series',700,13),(20,5,'Kızıl Nehirler',20,10),(21,5,'Leyleklerin Uçuşu',15,5),(22,5,'Melekler ve Şeytanlar',30,10),(23,6,'Film',30,10),(24,6,'Müzik',20,30),(26,4,'aad',43,66),(30,5,'ADS',34,4);
+CREATE TABLE satis (s_no INTEGER PRIMARY KEY, m_no INTEGER NOT NULL, tarih TEXT NOT NULL, t_fiyat INTEGER NOT NULL);
+INSERT INTO satis VALUES (1,1,'2011-06-05',1700),(2,1,'2011-07-07',6600),(3,4,'2012-10-08',15),(4,6,'2012-12-11',1500),(5,11,'2013-01-13',1400),(6,15,'2013-01-14',2850),(7,13,'2013-02-06',200),(8,3,'2012-03-20',900);
+CREATE TABLE satis_detay (d_no INTEGER PRIMARY KEY, s_no INTEGER NOT NULL, u_no INTEGER NOT NULL, miktar INTEGER NOT NULL);
+INSERT INTO satis_detay VALUES (1,1,1,1),(2,1,2,1),(3,2,14,1),(4,2,18,1),(5,3,21,1),(6,4,11,2),(7,5,7,1),(8,6,19,1),(9,7,24,10),(10,8,2,1);
+`
+
+}; // end INIT_SQL
+
+// =============================================
+// QUIZ QUESTIONS
+// =============================================
+const QUESTION_TEMPLATES = {
+
+vtders: [
+
+// ===== KOLAY =====
+{ diff:1,
+  paramQuery:"SELECT b.bolumno, b.bolumad FROM bolumler b INNER JOIN ogrenciler o ON b.bolumno=o.bolumkod GROUP BY b.bolumno ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.bolumad} bölümündeki öğrencilerin listesini getir.`,
+  genCevap: p=>`SELECT * FROM ogrenciler WHERE bolumkod=${p.bolumno}`,
+  yardim:["SELECT * FROM ogrenciler WHERE _____ = _____","Kullan: WHERE, = operatörü, bolumkod sütunu",p=>`bolumkod değeri ${p.bolumno} ile eşit olanları filtrele`]
+},
+{ diff:1,
+  paramQuery:"SELECT cinsiyet FROM ogrenciler GROUP BY cinsiyet ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`Tüm ${p.cinsiyet.toLowerCase()} öğrencileri listele.`,
+  genCevap: p=>`SELECT * FROM ogrenciler WHERE cinsiyet='${p.cinsiyet}'`,
+  yardim:["SELECT * FROM ogrenciler WHERE _____ = '_____'","Kullan: WHERE, =, cinsiyet sütunu",p=>`cinsiyet sütununu '${p.cinsiyet}' değeriyle karşılaştır`]
+},
+{ diff:1,
+  paramQuery:"SELECT f.fakulteno, f.fakultead FROM fakulteler f INNER JOIN bolumler b ON f.fakulteno=b.fakulteno GROUP BY f.fakulteno ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.fakultead} fakültesindeki bölümleri listele.`,
+  genCevap: p=>`SELECT * FROM bolumler WHERE fakulteno=${p.fakulteno}`,
+  yardim:["SELECT * FROM bolumler WHERE _____ = _____","Kullan: WHERE, =, fakulteno sütunu, bolumler tablosu",p=>`bolumler tablosunu fakulteno=${p.fakulteno} ile filtrele`]
+},
+{ diff:1,
+  paramQuery:"SELECT UPPER(SUBSTR(ograd,1,1)) AS harf FROM ogrenciler GROUP BY UPPER(SUBSTR(ograd,1,1)) HAVING COUNT(*)>=2 ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`İsmi '${p.harf}' harfiyle başlayan öğrencileri listele. (LIKE kullan)`,
+  genCevap: p=>`SELECT * FROM ogrenciler WHERE ograd LIKE '${p.harf.toLowerCase()}%'`,
+  yardim:["SELECT * FROM ogrenciler WHERE ograd LIKE '_____'","Kullan: LIKE operatörü, % joker karakter",p=>`'${p.harf.toLowerCase()}%' → ${p.harf} ile başlayan + ardından herhangi bir karakter`]
+},
+{ diff:1,
+  paramQuery:null,
+  genSoru: p=>`Öğrencileri ada göre A'dan Z'ye (artan) sırala.`,
+  genCevap: p=>`SELECT * FROM ogrenciler ORDER BY ograd`,
+  yardim:["SELECT * FROM ogrenciler _____ BY _____","Kullan: ORDER BY, ograd sütunu","ORDER BY + sütun adı → artan sıra (ASC varsayılan)"]
+},
+{ diff:1,
+  paramQuery:"SELECT derskodu, dersadi FROM dersler ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.dersadi}' dersinin tüm bilgilerini getir.`,
+  genCevap: p=>`SELECT * FROM dersler WHERE derskodu=${p.derskodu}`,
+  yardim:["SELECT * FROM dersler WHERE _____ = _____","Kullan: WHERE, =, derskodu sütunu",p=>`derskodu değeri ${p.derskodu} ile filtrele`]
+},
+{ diff:1,
+  paramQuery:null,
+  genSoru: p=>`Öğrencileri öğrenci numarasına göre büyükten küçüğe (azalan) sırala.`,
+  genCevap: p=>`SELECT * FROM ogrenciler ORDER BY ogrno DESC`,
+  yardim:["SELECT * FROM ogrenciler ORDER BY _____ _____","Kullan: ORDER BY, DESC, ogrno sütunu","Azalan sıra için ORDER BY ogrno DESC"]
+},
+{ diff:1,
+  paramQuery:"SELECT ogrno, ograd, ogrsoyad FROM ogrenciler ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.ograd} ${p.ogrsoyad} isimli öğrencinin tüm bilgilerini getir.`,
+  genCevap: p=>`SELECT * FROM ogrenciler WHERE ogrno=${p.ogrno}`,
+  yardim:["SELECT * FROM ogrenciler WHERE _____ = _____","Kullan: WHERE, =, ogrno sütunu",p=>`ogrno değeri ${p.ogrno} ile filtrele`]
+},
+
+// ===== ORTA =====
+{ diff:2,
+  paramQuery:"SELECT d.derskodu, d.dersadi FROM dersler d INNER JOIN notlar n ON d.derskodu=n.derskodu GROUP BY d.derskodu ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.dersadi}' dersinin vize ortalamasını bul.`,
+  genCevap: p=>`SELECT AVG(vize) AS ort_vize FROM notlar WHERE derskodu=${p.derskodu}`,
+  yardim:["SELECT _____(_____) AS ort_vize FROM notlar WHERE _____ = _____","Kullan: AVG fonksiyonu, WHERE derskodu=...",p=>`AVG(vize) kullan, derskodu=${p.derskodu} ile filtrele`]
+},
+{ diff:2,
+  paramQuery:"SELECT b.bolumno, b.bolumad FROM bolumler b INNER JOIN ogrenciler o ON b.bolumno=o.bolumkod GROUP BY b.bolumno HAVING COUNT(*)>=2 ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.bolumad} bölümündeki öğrenci sayısını bul.`,
+  genCevap: p=>`SELECT COUNT(*) AS sayi FROM ogrenciler WHERE bolumkod=${p.bolumno}`,
+  yardim:["SELECT _____(*) AS sayi FROM ogrenciler WHERE _____ = _____","Kullan: COUNT(*), WHERE, bolumkod",p=>`COUNT(*) ile say, bolumkod=${p.bolumno} filtresi ekle`]
+},
+{ diff:2,
+  paramQuery:"SELECT b.bolumno, b.bolumad FROM bolumler b INNER JOIN ogrenciler o ON b.bolumno=o.bolumkod GROUP BY b.bolumno ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.bolumad} bölümündeki öğrencilerin adını, soyadını ve bölüm adını birlikte getir. (2 tablo)`,
+  genCevap: p=>`SELECT ograd, ogrsoyad, bolumad FROM ogrenciler o, bolumler b WHERE o.bolumkod=b.bolumno AND bolumkod=${p.bolumno}`,
+  yardim:["SELECT ograd, ogrsoyad, bolumad FROM ogrenciler o, bolumler b WHERE o.bolumkod=b.bolumno AND _____ = _____","Kullan: 2 tablo, WHERE eşleştirme + AND ile filtre",p=>`2 tablo birleştir, AND bolumkod=${p.bolumno} koşulu ekle`]
+},
+{ diff:2,
+  paramQuery:null,
+  genSoru: p=>`Her bölümdeki öğrenci sayısını bul. (bolumkod ve sayi sütunları, çoktan aza sırala)`,
+  genCevap: p=>`SELECT bolumkod, COUNT(*) AS sayi FROM ogrenciler GROUP BY bolumkod ORDER BY sayi DESC`,
+  yardim:["SELECT bolumkod, _____(*) AS sayi FROM ogrenciler _____ BY bolumkod ORDER BY sayi DESC","Kullan: COUNT(*), GROUP BY, ORDER BY DESC","GROUP BY ile grupla, COUNT(*) ile say, ORDER BY sayi DESC ile sırala"]
+},
+{ diff:2,
+  paramQuery:"SELECT strftime('%Y', dogumtarihi) AS yil FROM ogrenciler GROUP BY yil HAVING COUNT(*)>=3 ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.yil} yılından ÖNCE doğan öğrencilerin sayısını bul.`,
+  genCevap: p=>`SELECT COUNT(*) AS sayi FROM ogrenciler WHERE dogumtarihi < '${p.yil}-01-01'`,
+  yardim:["SELECT _____(*) AS sayi FROM ogrenciler WHERE dogumtarihi < '_____'","Kullan: COUNT(*), WHERE, < operatörü, dogumtarihi sütunu",p=>`dogumtarihi sütununu '${p.yil}-01-01' ile karşılaştır`]
+},
+{ diff:2,
+  paramQuery:"SELECT d.derskodu, d.dersadi FROM dersler d INNER JOIN notlar n ON d.derskodu=n.derskodu GROUP BY d.derskodu ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.dersadi}' dersini alan öğrencilerin öğrenci numarasını ve vize notunu getir.`,
+  genCevap: p=>`SELECT ogrno, vize FROM notlar WHERE derskodu=${p.derskodu}`,
+  yardim:["SELECT _____, _____ FROM notlar WHERE _____ = _____","Kullan: ogrno, vize sütunları, WHERE derskodu=...",p=>`notlar tablosundan ogrno ve vize seç, derskodu=${p.derskodu} filtrele`]
+},
+
+// ===== ZOR =====
+{ diff:3,
+  paramQuery:"SELECT f.fakulteno, f.fakultead FROM fakulteler f INNER JOIN bolumler b ON f.fakulteno=b.fakulteno INNER JOIN ogrenciler o ON b.bolumno=o.bolumkod GROUP BY f.fakulteno ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.fakultead} fakültesindeki öğrencilerin adını, soyadını ve bölüm adını getir. (3 tablo)`,
+  genCevap: p=>`SELECT ograd, ogrsoyad, bolumad FROM ogrenciler o, bolumler b, fakulteler f WHERE o.bolumkod=b.bolumno AND b.fakulteno=f.fakulteno AND f.fakulteno=${p.fakulteno}`,
+  yardim:["SELECT ograd, ogrsoyad, bolumad FROM ogrenciler o, bolumler b, fakulteler f WHERE o.bolumkod=b.bolumno AND b.fakulteno=f.fakulteno AND f.fakulteno=_____","Kullan: 3 tablo (ogrenciler, bolumler, fakulteler), 2 eşleşme + AND",p=>`3 tablo, 2 WHERE koşulu + f.fakulteno=${p.fakulteno}`]
+},
+{ diff:3,
+  paramQuery:"SELECT d.derskodu, d.dersadi FROM dersler d INNER JOIN notlar n ON d.derskodu=n.derskodu GROUP BY d.derskodu HAVING COUNT(*)>=3 ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.dersadi}' dersinde en yüksek vize alan öğrencinin adını ve soyadını getir. (iç içe SELECT)`,
+  genCevap: p=>`SELECT ograd, ogrsoyad FROM ogrenciler WHERE ogrno IN (SELECT ogrno FROM notlar WHERE derskodu=${p.derskodu} AND vize=(SELECT MAX(vize) FROM notlar WHERE derskodu=${p.derskodu}))`,
+  yardim:["SELECT ograd, ogrsoyad FROM ogrenciler WHERE ogrno IN (SELECT ogrno FROM notlar WHERE derskodu=_____ AND vize=(SELECT _____(_____) FROM notlar WHERE derskodu=_____))",p=>`Kullan: iç içe SELECT (3 katman), MAX(vize), IN operatörü`,p=>`İçten dışa: MAX vize (derskodu=${p.derskodu}) → o vizeyi kimin aldığını bul → isime çevir`]
+},
+{ diff:3,
+  paramQuery:null,
+  genSoru: p=>`Ortalamanın üzerinde vize alan öğrenci numaralarını bul. (DISTINCT kullan, tekrarsız)`,
+  genCevap: p=>`SELECT DISTINCT ogrno FROM notlar WHERE vize > (SELECT AVG(vize) FROM notlar)`,
+  yardim:["SELECT DISTINCT ogrno FROM notlar WHERE vize > (SELECT _____(_____) FROM notlar)","Kullan: DISTINCT, iç içe SELECT, AVG(vize), > operatörü","Alt sorgu ile ortalamayı hesapla, dış sorguda > ile karşılaştır, DISTINCT ile tekrarları önle"]
+},
+{ diff:3,
+  paramQuery:null,
+  genSoru: p=>`2'den fazla ders alan öğrencilerin öğrenci numarasını ve ders sayısını bul. (HAVING)`,
+  genCevap: p=>`SELECT ogrno, COUNT(*) AS ders_sayisi FROM notlar GROUP BY ogrno HAVING COUNT(*) > 2`,
+  yardim:["SELECT ogrno, COUNT(*) AS ders_sayisi FROM notlar _____ BY ogrno _____ COUNT(*) > _____","Kullan: GROUP BY, HAVING (gruplama sonrası filtre), COUNT(*) > 2","GROUP BY ile her öğrencinin ders sayısını say, HAVING ile 2'den fazla olanı filtrele"]
+},
+{ diff:3,
+  paramQuery:"SELECT d.derskodu, d.dersadi FROM dersler d INNER JOIN notlar n ON d.derskodu=n.derskodu GROUP BY d.derskodu ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.dersadi}' dersini alan öğrencilerin adını, soyadını ve vize notunu getir. (3 tablo)`,
+  genCevap: p=>`SELECT o.ograd, o.ogrsoyad, n.vize FROM ogrenciler o, notlar n, dersler d WHERE o.ogrno=n.ogrno AND n.derskodu=d.derskodu AND d.derskodu=${p.derskodu}`,
+  yardim:["SELECT o.ograd, o.ogrsoyad, n.vize FROM ogrenciler o, notlar n, dersler d WHERE o.ogrno=n.ogrno AND n.derskodu=d.derskodu AND d.derskodu=_____","Kullan: 3 tablo (ogrenciler, notlar, dersler), 2 eşleşme + filtre",p=>`3 tablo zinciri: ogrenciler↔notlar↔dersler, derskodu=${p.derskodu} ile filtrele`]
+},
+{ diff:3,
+  paramQuery:null,
+  genSoru: p=>`Her öğrencinin final ortalamasını bul; ortalamasını ada göre sırala. (JOIN + GROUP BY)`,
+  genCevap: p=>`SELECT o.ograd, o.ogrsoyad, AVG(n.final) AS ort_final FROM ogrenciler o, notlar n WHERE o.ogrno=n.ogrno GROUP BY o.ogrno ORDER BY o.ograd`,
+  yardim:["SELECT o.ograd, o.ogrsoyad, _____(_____) AS ort_final FROM ogrenciler o, notlar n WHERE o.ogrno=n.ogrno _____ BY o.ogrno ORDER BY o.ograd","Kullan: AVG(final), GROUP BY o.ogrno, 2 tablo birleştir","2 tablo + GROUP BY + AVG ile her öğrencinin final ortalaması"]
+},
+
+], // end vtders
+
+alisveris: [
+
+// ===== KOLAY =====
+{ diff:1,
+  paramQuery:"SELECT m.sehir FROM musteriler m INNER JOIN satis s ON m.m_no=s.m_no GROUP BY m.sehir ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.sehir} şehrindeki müşterileri listele.`,
+  genCevap: p=>`SELECT * FROM musteriler WHERE sehir='${p.sehir}'`,
+  yardim:["SELECT * FROM musteriler WHERE _____ = '_____'","Kullan: WHERE, =, sehir sütunu",p=>`sehir sütununu '${p.sehir}' değeriyle karşılaştır (küçük/büyük harfe dikkat!)`]
+},
+{ diff:1,
+  paramQuery:"SELECT k.k_no, k.ad FROM kategoriler k INNER JOIN urunler u ON k.k_no=u.k_no GROUP BY k.k_no ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.ad}' kategorisindeki (k_no = ${p.k_no}) ürünleri listele.`,
+  genCevap: p=>`SELECT * FROM urunler WHERE k_no=${p.k_no}`,
+  yardim:["SELECT * FROM urunler WHERE _____ = _____","Kullan: WHERE, =, k_no sütunu, urunler tablosu",p=>`k_no=${p.k_no} ile filtrele`]
+},
+{ diff:1,
+  paramQuery:"SELECT fiyat FROM urunler ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`Fiyatı ${p.fiyat} TL'nin ÜZERİNDE olan ürünlerin adını ve fiyatını getir.`,
+  genCevap: p=>`SELECT ad, fiyat FROM urunler WHERE fiyat > ${p.fiyat}`,
+  yardim:["SELECT _____, _____ FROM urunler WHERE _____ > _____","Kullan: 2 sütun seç (ad, fiyat), WHERE, > operatörü",p=>`ad ve fiyat sütunlarını seç, fiyat > ${p.fiyat} koşulu ekle`]
+},
+{ diff:1,
+  paramQuery:null,
+  genSoru: p=>`Stokta olmayan (stok = 0) ürünlerin adını ve fiyatını listele.`,
+  genCevap: p=>`SELECT ad, fiyat FROM urunler WHERE stok=0`,
+  yardim:["SELECT _____, _____ FROM urunler WHERE _____ = _____","Kullan: WHERE, =, stok sütunu","stok sütununu sıfıra eşit olanları getir"]
+},
+{ diff:1,
+  paramQuery:"SELECT UPPER(SUBSTR(ad,1,1)) AS harf FROM musteriler GROUP BY UPPER(SUBSTR(ad,1,1)) HAVING COUNT(*)>=2 ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`İsmi '${p.harf}' harfiyle başlayan müşterileri listele. (LIKE kullan)`,
+  genCevap: p=>`SELECT * FROM musteriler WHERE ad LIKE '${p.harf.toLowerCase()}%'`,
+  yardim:["SELECT * FROM musteriler WHERE ad LIKE '_____'","Kullan: LIKE operatörü, % joker karakter",p=>`'${p.harf.toLowerCase()}%' → ${p.harf} ile başlayan + ardından herhangi bir karakter`]
+},
+{ diff:1,
+  paramQuery:null,
+  genSoru: p=>`Ürünleri fiyata göre ucuzdan pahalıya (artan) sırala.`,
+  genCevap: p=>`SELECT * FROM urunler ORDER BY fiyat`,
+  yardim:["SELECT * FROM urunler _____ BY _____","Kullan: ORDER BY, fiyat sütunu","ORDER BY + sütun adı → artan sıra (ASC varsayılan)"]
+},
+{ diff:1,
+  paramQuery:"SELECT m_no, ad, soyad FROM musteriler ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.ad} ${p.soyad} isimli müşterinin tüm bilgilerini getir.`,
+  genCevap: p=>`SELECT * FROM musteriler WHERE m_no=${p.m_no}`,
+  yardim:["SELECT * FROM musteriler WHERE _____ = _____","Kullan: WHERE, =, m_no sütunu",p=>`m_no=${p.m_no} ile filtrele`]
+},
+
+// ===== ORTA =====
+{ diff:2,
+  paramQuery:null,
+  genSoru: p=>`Her şehirdeki müşteri sayısını bul ve çoktan aza sırala. (sehir ve sayi sütunları)`,
+  genCevap: p=>`SELECT sehir, COUNT(*) AS sayi FROM musteriler GROUP BY sehir ORDER BY sayi DESC`,
+  yardim:["SELECT sehir, _____(*) AS sayi FROM musteriler _____ BY sehir ORDER BY sayi DESC","Kullan: COUNT(*), GROUP BY, ORDER BY DESC","Şehre göre grupla, say, ORDER BY sayi DESC ile büyükten küçüğe sırala"]
+},
+{ diff:2,
+  paramQuery:"SELECT k.k_no, k.ad FROM kategoriler k INNER JOIN urunler u ON k.k_no=u.k_no GROUP BY k.k_no HAVING COUNT(*)>=2 ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.ad}' kategorisindeki ürünlerin ortalama fiyatını bul.`,
+  genCevap: p=>`SELECT AVG(fiyat) AS ort_fiyat FROM urunler WHERE k_no=${p.k_no}`,
+  yardim:["SELECT _____(_____) AS ort_fiyat FROM urunler WHERE k_no = _____","Kullan: AVG fonksiyonu, WHERE k_no filtresi",p=>`AVG(fiyat) kullan, k_no=${p.k_no} ile filtrele`]
+},
+{ diff:2,
+  paramQuery:"SELECT strftime('%Y', tarih) AS yil FROM satis GROUP BY yil ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.yil} yılında gerçekleşen satışların toplam tutarını bul.`,
+  genCevap: p=>`SELECT SUM(t_fiyat) AS toplam FROM satis WHERE tarih LIKE '${p.yil}%'`,
+  yardim:["SELECT _____(_____) AS toplam FROM satis WHERE tarih _____ '_____'","Kullan: SUM fonksiyonu, LIKE operatörü, tarih sütunu",p=>`SUM(t_fiyat) kullan, tarih LIKE '${p.yil}%' ile yılı filtrele`]
+},
+{ diff:2,
+  paramQuery:"SELECT m.sehir FROM musteriler m INNER JOIN satis s ON m.m_no=s.m_no GROUP BY m.sehir HAVING COUNT(DISTINCT m.m_no)>=2 ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`${p.sehir} şehrindeki müşterilerin toplam satış tutarını bul. (2 tablo birleştir)`,
+  genCevap: p=>`SELECT SUM(s.t_fiyat) AS toplam FROM musteriler m, satis s WHERE m.m_no=s.m_no AND m.sehir='${p.sehir}'`,
+  yardim:["SELECT _____(s._____) AS toplam FROM musteriler m, satis s WHERE m.m_no=s.m_no AND m.sehir='_____'","Kullan: SUM(t_fiyat), 2 tablo birleştir, AND ile şehir filtresi",p=>`2 tablo: musteriler + satis, WHERE ile birleştir, AND m.sehir='${p.sehir}' ile filtrele`]
+},
+{ diff:2,
+  paramQuery:null,
+  genSoru: p=>`Her kategorideki ürün sayısını kategori adıyla birlikte getir. (2 tablo birleştir)`,
+  genCevap: p=>`SELECT k.ad, COUNT(*) AS sayi FROM urunler u, kategoriler k WHERE u.k_no=k.k_no GROUP BY u.k_no`,
+  yardim:["SELECT k.ad, _____(*) AS sayi FROM urunler u, kategoriler k WHERE u.k_no=k.k_no _____ BY u.k_no","Kullan: COUNT(*), 2 tablo (urunler, kategoriler), GROUP BY u.k_no","urunler + kategoriler birleştir (k_no ile), kategoriye göre grupla ve say"]
+},
+{ diff:2,
+  paramQuery:"SELECT k.k_no, k.ad FROM kategoriler k INNER JOIN urunler u ON k.k_no=u.k_no GROUP BY k.k_no ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.ad}' kategorisindeki en pahalı ürünün adını ve fiyatını getir.`,
+  genCevap: p=>`SELECT ad, fiyat FROM urunler WHERE k_no=${p.k_no} AND fiyat=(SELECT MAX(fiyat) FROM urunler WHERE k_no=${p.k_no})`,
+  yardim:[p=>`SELECT ad, fiyat FROM urunler WHERE k_no=${p.k_no} AND fiyat=(SELECT _____(_____) FROM urunler WHERE k_no=${p.k_no})`,p=>`Kullan: iç içe SELECT, MAX(fiyat), AND koşulu, k_no=${p.k_no}`,p=>`Alt sorgu ile MAX fiyatı bul, dış sorguda AND fiyat=MAX ile filtrele`]
+},
+
+// ===== ZOR =====
+{ diff:3,
+  paramQuery:"SELECT u.u_no, u.ad FROM urunler u INNER JOIN satis_detay sd ON u.u_no=sd.u_no GROUP BY u.u_no ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.ad}' ürününü satın alan müşterilerin adını ve soyadını getir. (4 tablo)`,
+  genCevap: p=>`SELECT m.ad, m.soyad FROM musteriler m, satis s, satis_detay sd, urunler u WHERE m.m_no=s.m_no AND s.s_no=sd.s_no AND sd.u_no=u.u_no AND u.u_no=${p.u_no}`,
+  yardim:["SELECT m.ad, m.soyad FROM musteriler m, satis s, satis_detay sd, urunler u WHERE m.m_no=s.m_no AND s.s_no=sd.s_no AND sd.u_no=u.u_no AND u.u_no=_____","Kullan: 4 tablo (musteriler, satis, satis_detay, urunler), 3 eşleşme koşulu",p=>`Zincir: musteriler→satis→satis_detay→urunler, son koşul u.u_no=${p.u_no}`]
+},
+{ diff:3,
+  paramQuery:null,
+  genSoru: p=>`En çok harcayan müşterinin adını ve soyadını bul. (iç içe SELECT)`,
+  genCevap: p=>`SELECT ad, soyad FROM musteriler WHERE m_no=(SELECT m_no FROM satis GROUP BY m_no ORDER BY SUM(t_fiyat) DESC LIMIT 1)`,
+  yardim:["SELECT ad, soyad FROM musteriler WHERE m_no=(SELECT m_no FROM satis GROUP BY m_no ORDER BY _____(t_fiyat) _____ LIMIT 1)","Kullan: iç içe SELECT, SUM(t_fiyat), ORDER BY DESC, LIMIT 1","Alt sorgu: GROUP BY m_no + ORDER BY SUM DESC + LIMIT 1 → en fazla harcayanın m_no'su"]
+},
+{ diff:3,
+  paramQuery:null,
+  genSoru: p=>`Hiç satılmamış ürünlerin adını listele. (LEFT JOIN + IS NULL)`,
+  genCevap: p=>`SELECT ad FROM urunler u LEFT JOIN satis_detay sd ON u.u_no=sd.u_no WHERE sd.u_no IS NULL`,
+  yardim:["SELECT ad FROM urunler u LEFT JOIN satis_detay sd ON u.u_no=sd.u_no WHERE sd.u_no _____ _____","Kullan: LEFT JOIN, IS NULL","LEFT JOIN → eşleşmeyenler NULL döner → IS NULL ile hiç satılmayanları yakala"]
+},
+{ diff:3,
+  paramQuery:null,
+  genSoru: p=>`Şehir bazında toplam satış tutarını hesapla; en çok satış yapılan şehri en üste getir. (2 tablo)`,
+  genCevap: p=>`SELECT m.sehir, SUM(s.t_fiyat) AS toplam FROM musteriler m, satis s WHERE m.m_no=s.m_no GROUP BY m.sehir ORDER BY toplam DESC`,
+  yardim:["SELECT m.sehir, _____(_____) AS toplam FROM musteriler m, satis s WHERE m.m_no=s.m_no _____ BY m.sehir ORDER BY toplam DESC","Kullan: SUM(t_fiyat), GROUP BY m.sehir, ORDER BY DESC","2 tablo birleştir, şehre göre grupla, SUM hesapla, ORDER BY toplam DESC ile sırala"]
+},
+{ diff:3,
+  paramQuery:"SELECT k.k_no, k.ad FROM kategoriler k INNER JOIN urunler u ON k.k_no=u.k_no INNER JOIN satis_detay sd ON u.u_no=sd.u_no GROUP BY k.k_no ORDER BY RANDOM() LIMIT 1",
+  genSoru: p=>`'${p.ad}' kategorisinden ürün satın alan müşterilerin şehirlerini bul. (DISTINCT ile, 5 tablo)`,
+  genCevap: p=>`SELECT DISTINCT m.sehir FROM musteriler m, satis s, satis_detay sd, urunler u, kategoriler k WHERE m.m_no=s.m_no AND s.s_no=sd.s_no AND sd.u_no=u.u_no AND u.k_no=k.k_no AND k.k_no=${p.k_no}`,
+  yardim:["SELECT DISTINCT m.sehir FROM musteriler m, satis s, satis_detay sd, urunler u, kategoriler k WHERE m.m_no=s.m_no AND s.s_no=sd.s_no AND sd.u_no=u.u_no AND u.k_no=k.k_no AND k.k_no=_____","Kullan: 5 tablo, DISTINCT, 4 eşleşme koşulu",p=>`Müşteri→Satış→Detay→Ürün→Kategori zinciri, k.k_no=${p.k_no} ile filtrele`]
+},
+
+] // end alisveris
+
+}; // end QUESTION_TEMPLATES
+
+// =============================================
+// APP STATE & DB
+// =============================================
+const dbs = {};
+let currentDB = 'vtders';
+let currentLesson = 0;
+
+// =============================================
+// QUIZ STATE
+// =============================================
+let quizMode = false;
+let quizDiffFilter = 0;
+let quizHelpLevel = 4;
+let quizHistory = [];
+let quizHistoryIndex = -1;
+let quizAttemptCount = 0;
+let quizCurrentCorrect = false;
+const quizScore = { vtders: 0, alisveris: 0 };
+
+async function initDB() {
+  try {
+    const SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` });
+    dbs.vtders = new SQL.Database();
+    dbs.vtders.run(INIT_SQL.vtders);
+    dbs.alisveris = new SQL.Database();
+    dbs.alisveris.run(INIT_SQL.alisveris);
+    document.getElementById('loading').style.display = 'none';
+    renderSidebar();
+    selectLesson(0);
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div style="color:#f87171;padding:30px;text-align:center"><b>❌ Hata:</b> ' + e.message + '<br><br>İnternet bağlantınızı kontrol edin.</div>';
+  }
+}
+
+function switchDB(dbName) {
+  currentDB = dbName;
+  currentLesson = 0;
+  document.querySelectorAll('.db-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + dbName).classList.add('active');
+  document.getElementById('db-sub').textContent = dbName === 'vtders' ? '📚 vt_ders veritabanı — Arif Hoca' : '🛒 Alışveriş veritabanı — Arif Hoca';
+  if (quizMode) {
+    quizIndex = 0;
+    quizAttemptCount = 0;
+    updateQuizQuestions();
+    renderQuizQuestion();
+    updateQuizScore();
+    document.getElementById('quiz-result').innerHTML = '';
+    document.getElementById('quiz-editor').value = '';
+    document.getElementById('btn-show-ans').style.display = 'none';
+  } else {
+    document.getElementById('sidebar-hdr').textContent = dbName === 'vtders' ? '📚 vt_ders Dersleri' : '🛒 Alışveriş Dersleri';
+    document.getElementById('sql-editor').value = '';
+    document.getElementById('results-wrap').innerHTML = '<div class="results-info">👆 Ders seç ve başla!</div>';
+    renderSidebar();
+    selectLesson(0);
+  }
+}
+
+function resetDB() {
+  if (!confirm('Veritabanı sıfırlanacak — yaptığın değişiklikler silinecek. Devam?')) return;
+  const tables = currentDB === 'vtders'
+    ? ['notlar','ogrenciler','dersler','bolumler','fakulteler','Personel']
+    : ['satis_detay','satis','urunler','musteriler','kategoriler'];
+  tables.forEach(t => { try { dbs[currentDB].run('DROP TABLE IF EXISTS ' + t); } catch(e){} });
+  dbs[currentDB].run(INIT_SQL[currentDB]);
+  document.getElementById('results-wrap').innerHTML = '<div class="ok-box">✅ Veritabanı sıfırlandı!</div>';
+}
+
+function renderSidebar() {
+  const list = document.getElementById('lesson-list');
+  const lessons = ALL_LESSONS[currentDB];
+  list.innerHTML = lessons.map((l, i) => `
+    <div class="lesson-item${i === 0 ? ' active' : ''}" onclick="selectLesson(${i})" id="li-${i}">
+      <div class="icon">${l.icon}</div>
+      <div class="info">
+        <div class="title">${l.title}</div>
+        <div class="sub">${l.sub}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectLesson(idx) {
+  document.querySelectorAll('.lesson-item').forEach(el => el.classList.remove('active'));
+  const li = document.getElementById('li-' + idx);
+  if (li) li.classList.add('active');
+  currentLesson = idx;
+  const l = ALL_LESSONS[currentDB][idx];
+  const panel = document.getElementById('lesson-panel');
+  let exHtml = '';
+  if (l.examples && l.examples.length > 0) {
+    exHtml = `<div style="margin-top:14px"><div class="ex-title">▸ Tıkla & Dene — Örnekler</div><div class="ex-grid">` +
+      l.examples.map(e => `<div class="ex-item" onclick="loadExample(${JSON.stringify(e.code)})"><div class="ex-desc">${e.desc}</div><div class="ex-code">${e.code}</div></div>`).join('') +
+      `</div></div>`;
+  }
+  panel.innerHTML = l.html + exHtml;
+  if (idx === 0) renderSchema();
+}
+
+function renderSchema() {
+  const el = document.getElementById('schema-here');
+  if (!el) return;
+  const schema = ALL_SCHEMA[currentDB];
+  el.innerHTML = '<div class="schema-grid">' +
+    Object.entries(schema).map(([tbl, info]) =>
+      `<div class="s-tbl">
+        <div class="s-hdr">📋 ${tbl}</div>
+        ${info.cols.map(([name, type, extra]) =>
+          `<div class="s-col">
+            <span class="cn">${name}${extra==='pk'?'<span class="pk">🔑</span>':extra==='fk'?'<span class="fk">🔗</span>':''}</span>
+            <span class="ct">${type}</span>
+          </div>`).join('')}
+      </div>`).join('') + '</div>';
+}
+
+function loadExample(code) {
+  document.getElementById('sql-editor').value = code;
+  runQuery();
+}
+
+function runQuery() {
+  const db = dbs[currentDB];
+  if (!db) return;
+  const sql = document.getElementById('sql-editor').value.trim();
+  if (!sql) return;
+  const wrap = document.getElementById('results-wrap');
+  try {
+    const results = db.exec(sql);
+    if (results.length === 0) {
+      wrap.innerHTML = '<div class="ok-box">✅ Sorgu başarıyla çalıştı (INSERT/UPDATE/DELETE/CREATE/DROP için sonuç gösterilmez — normal bu).</div>';
+    } else {
+      const { columns, values } = results[0];
+      wrap.innerHTML =
+        `<div class="results-count">✅ ${values.length} satır döndü</div>` +
+        '<table><thead><tr>' + columns.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>' +
+        values.map(row => '<tr>' + row.map(v => `<td>${v === null ? '<span style="color:#475569;font-style:italic">NULL</span>' : v}</td>`).join('') + '</tr>').join('') +
+        '</tbody></table>';
+    }
+  } catch(e) {
+    wrap.innerHTML = `<div class="err-box">❌ <strong>Hata:</strong> ${e.message}</div>`;
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (quizMode) checkAnswer(); else runQuery();
+  }
+});
+
+// =============================================
+// QUIZ FUNCTIONS
+// =============================================
+function toggleQuiz() {
+  quizMode = !quizMode;
+  const btn = document.getElementById('btn-quiz');
+  if (quizMode) {
+    btn.textContent = '📚 Ders Modu';
+    btn.classList.add('active');
+    document.getElementById('lesson-main').style.display = 'none';
+    document.getElementById('quiz-main').style.display = 'flex';
+    initQuiz();
+  } else {
+    btn.textContent = '🎯 Sınav Modu';
+    btn.classList.remove('active');
+    document.getElementById('lesson-main').style.display = 'flex';
+    document.getElementById('quiz-main').style.display = 'none';
+  }
+}
+
+function initQuiz() {
+  quizDiffFilter = 0;
+  quizHelpLevel = 4;
+  quizHistory = [];
+  quizHistoryIndex = -1;
+  quizAttemptCount = 0;
+  quizCurrentCorrect = false;
+  updateDiffButtons();
+  setHelp(4);
+  nextQuestion();
+  updateQuizScore();
+}
+
+function generateQuestion(tries) {
+  tries = tries || 0;
+  if (tries > 25) return null;
+  const templates = (QUESTION_TEMPLATES[currentDB] || [])
+    .filter(t => quizDiffFilter === 0 || t.diff === quizDiffFilter);
+  if (!templates.length) return null;
+  const tmpl = templates[Math.floor(Math.random() * templates.length)];
+  let params = {};
+  if (tmpl.paramQuery) {
+    try {
+      const res = dbs[currentDB].exec(tmpl.paramQuery);
+      if (res.length && res[0].values.length) {
+        const row = res[0].values[0];
+        res[0].columns.forEach((col, i) => { params[col] = row[i]; });
+      } else { return generateQuestion(tries + 1); }
+    } catch(e) { return generateQuestion(tries + 1); }
+  }
+  let q;
+  try {
+    q = {
+      diff: tmpl.diff,
+      soru: tmpl.genSoru(params),
+      cevap: tmpl.genCevap(params),
+      yardim: tmpl.yardim.map(h => typeof h === 'function' ? h(params) : h)
+    };
+  } catch(e) { return generateQuestion(tries + 1); }
+  // Validate: answer must return >= 1 row
+  try {
+    const res = dbs[currentDB].exec(q.cevap);
+    if (!res.length || !res[0].values.length) return generateQuestion(tries + 1);
+  } catch(e) { return generateQuestion(tries + 1); }
+  return q;
+}
+
+function nextQuestion() {
+  if (quizHistoryIndex < quizHistory.length - 1) {
+    quizHistoryIndex++;
+  } else {
+    const q = generateQuestion(0);
+    if (!q) {
+      document.getElementById('q-card').innerHTML = '<div class="q-text" style="color:#64748b">⚠️ Soru üretilemedi. Farklı zorluk seçin.</div>';
+      return;
+    }
+    quizHistory.push(q);
+    quizHistoryIndex = quizHistory.length - 1;
+  }
+  quizAttemptCount = 0;
+  quizCurrentCorrect = false;
+  renderCurrentQuestion();
+  document.getElementById('quiz-result').innerHTML = '';
+  document.getElementById('quiz-editor').value = '';
+  document.getElementById('btn-show-ans').style.display = 'none';
+}
+
+function prevQuestion() {
+  if (quizHistoryIndex > 0) {
+    quizHistoryIndex--;
+    quizAttemptCount = 0;
+    quizCurrentCorrect = false;
+    renderCurrentQuestion();
+    document.getElementById('quiz-result').innerHTML = '';
+    document.getElementById('quiz-editor').value = '';
+    document.getElementById('btn-show-ans').style.display = 'none';
+  }
+}
+
+function quizNav(dir) { if (dir > 0) nextQuestion(); else prevQuestion(); }
+function quizSkip() { nextQuestion(); }
+
+function renderCurrentQuestion() {
+  const counter = document.getElementById('quiz-counter');
+  if (quizHistoryIndex < 0 || !quizHistory.length) {
+    document.getElementById('q-card').innerHTML = '';
+    counter.textContent = '#0';
+    return;
+  }
+  const q = quizHistory[quizHistoryIndex];
+  const diffLabel = ['','🟢 Kolay','🟡 Orta','🔴 Zor'][q.diff];
+  const num = quizHistoryIndex + 1;
+  document.getElementById('q-card').innerHTML =
+    `<div class="q-meta">
+       <span class="diff-badge d${q.diff}">${diffLabel}</span>
+       <span class="q-num">Soru #${num}</span>
+     </div>
+     <div class="q-text">${q.soru}</div>`;
+  counter.textContent = `#${num}`;
+  renderHelpDisplay();
+}
+
+function setDiffFilter(d) {
+  quizDiffFilter = d;
+  quizAttemptCount = 0;
+  quizCurrentCorrect = false;
+  quizHistory = [];
+  quizHistoryIndex = -1;
+  updateDiffButtons();
+  nextQuestion();
+  document.getElementById('quiz-result').innerHTML = '';
+  document.getElementById('quiz-editor').value = '';
+  document.getElementById('btn-show-ans').style.display = 'none';
+}
+
+function updateDiffButtons() {
+  [0,1,2,3].forEach(d => {
+    const btn = document.getElementById('dfbtn-' + d);
+    if (btn) btn.classList.toggle('active', d === quizDiffFilter);
+  });
+}
+
+function setHelp(level) {
+  quizHelpLevel = level;
+  [1,2,3,4].forEach(l => {
+    const tab = document.getElementById('ht-' + l);
+    if (tab) tab.classList.toggle('active', l === level);
+  });
+  renderHelpDisplay();
+}
+
+function renderHelpDisplay() {
+  const el = document.getElementById('help-display');
+  if (quizHistoryIndex < 0 || !quizHistory.length) { el.innerHTML = ''; return; }
+  const q = quizHistory[quizHistoryIndex];
+  const h = q.yardim[quizHelpLevel - 1];
+  if (!h) {
+    el.innerHTML = '<span class="help-none">Yardım yok — gücünü kendin göster! 💪</span>';
+    return;
+  }
+  if (quizHelpLevel === 1) {
+    el.innerHTML = h.replace(/_____/g, '<span class="blank">_____</span>');
+  } else if (quizHelpLevel === 2) {
+    el.innerHTML = '🔑 ' + h;
+  } else {
+    el.innerHTML = '💡 ' + h;
+  }
+}
+
+function checkAnswer() {
+  const db = dbs[currentDB];
+  if (!db || quizHistoryIndex < 0) return;
+  const userSQL = document.getElementById('quiz-editor').value.trim();
+  if (!userSQL) return;
+  const q = quizHistory[quizHistoryIndex];
+  const resultEl = document.getElementById('quiz-result');
+  let userRes = null, userErr = null;
+  try { userRes = db.exec(userSQL); } catch(e) { userErr = e.message; }
+  if (userErr) {
+    quizAttemptCount++;
+    if (quizAttemptCount >= 2) document.getElementById('btn-show-ans').style.display = 'inline-block';
+    resultEl.innerHTML = `<div class="qresult fail">❌ SQL Hatası: ${userErr}</div>`;
+    return;
+  }
+  let ansRes = null;
+  try { ansRes = db.exec(q.cevap); } catch(e) {}
+  if (compareResults(userRes, ansRes)) {
+    if (!quizCurrentCorrect) {
+      quizCurrentCorrect = true;
+      quizScore[currentDB]++;
+      updateQuizScore();
+    }
+    document.getElementById('btn-show-ans').style.display = 'none';
+    resultEl.innerHTML = `<div class="qresult ok">✅ Mükemmel! Doğru cevap! &nbsp;<button class="btn btn-check" onclick="nextQuestion()" style="margin-left:10px;padding:4px 14px;font-size:12px">Sonraki ▶</button></div>`;
+  } else {
+    quizAttemptCount++;
+    if (quizAttemptCount >= 2) document.getElementById('btn-show-ans').style.display = 'inline-block';
+    resultEl.innerHTML = `<div class="qresult fail">❌ Sonuç eşleşmedi. Tekrar dene! (${quizAttemptCount}. deneme)</div>`;
+  }
+}
+
+function compareResults(r1, r2) {
+  const isEmpty = r => !r || r.length === 0 || r[0].values.length === 0;
+  if (isEmpty(r1) && isEmpty(r2)) return true;
+  if (isEmpty(r1) || isEmpty(r2)) return false;
+  const a = r1[0], b = r2[0];
+  if (a.columns.length !== b.columns.length) return false;
+  if (a.values.length !== b.values.length) return false;
+  const norm = arr => [...arr]
+    .map(r => r.map(v => v === null ? '\x00NULL' : String(v)))
+    .sort((x, y) => JSON.stringify(x) < JSON.stringify(y) ? -1 : 1);
+  return JSON.stringify(norm(a.values)) === JSON.stringify(norm(b.values));
+}
+
+function showAnswer() {
+  if (quizHistoryIndex < 0) return;
+  const q = quizHistory[quizHistoryIndex];
+  document.getElementById('quiz-result').innerHTML =
+    `<div class="qresult fail">💡 Doğru cevap:<div class="ans-reveal">${q.cevap}</div></div>`;
+  document.getElementById('quiz-editor').value = q.cevap;
+}
+
+function updateQuizScore() {
+  const s = quizScore[currentDB];
+  document.getElementById('quiz-score-txt').textContent = `🏆 ${s} doğru`;
+}
+
+initDB();
+</script>
+</body>
+</html>
