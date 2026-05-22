@@ -35,10 +35,4 @@ DDL, DML, SELECT, WHERE, LIKE, Aggregate fonksiyonlar, GROUP BY, JOIN, Subquery
 - Veriler uygulama içinde tanımlı, sayfa yenilenince sıfırlanır
 - `Ctrl+Enter` ile sorgu çalıştır
 
-## 📸 Ekran Görüntüleri
 
-> Ders modu ve sınav modunun ekran görüntülerini buraya ekleyebilirsin.
-
-## 📝 Lisans
-
-MIT
